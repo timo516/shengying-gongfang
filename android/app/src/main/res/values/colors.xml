@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 浅色（默认）配色：界面里所有颜色都从这里取，换深色只改 values-night -->
+<resources>
+    <color name="app_bg">#FFFFFFFF</color>
+
+    <color name="text_primary">#FF202124</color>
+    <color name="text_secondary">#FF5F6368</color>
+    <color name="text_body">#FF3C4043</color>
+    <color name="text_hint">#FF80868B</color>
+    <color name="accent">#FF1A73E8</color>
+
+    <color name="wave_bg">#FFF1F3F4</color>
+    <color name="wave_line">#FFB4BAC1</color>
+    <color name="wave_sel">#FF1A73E8</color>
+    <color name="wave_del">#59D93025</color>
+    <color name="wave_sel_fill">#1F1A73E8</color>
+    <color name="wave_handle">#FF1A73E8</color>
+    <color name="wave_grip">#FFFFFFFF</color>
+    <color name="wave_playhead">#FF202124</color>
+
+    <color name="ic_launcher_background">#FF1A73E8</color>
+</resources>

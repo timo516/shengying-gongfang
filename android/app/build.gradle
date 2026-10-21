@@ -1,0 +1,83 @@
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+}
+
+// 签名信息外置到 keystore.properties，别把密码写死在仓库里
+def ksProps = new Properties()
+def ksPropsFile = rootProject.file('keystore.properties')
+if (ksPropsFile.exists()) {
+    ksPropsFile.withInputStream { ksProps.load(it) }
+}
+
+android {
+    namespace 'com.mediakit.app'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "com.mediakit.app"
+        minSdk 24
+        targetSdk 34
+        versionCode 5
+        versionName "1.0.3"
+
+        // ABI 可配置：默认只打 arm64-v8a（仓库里只带这一份 libffmpeg.so）。
+        // 想打全量包，把四份 libffmpeg.so 都放进 jniLibs，再用
+        //   gradle assembleRelease -Pabi=arm64-v8a,armeabi-v7a,x86,x86_64
+        def abiArg = (project.findProperty('abi') ?: 'arm64-v8a').toString()
+        ndk {
+            abiFilters(*abiArg.split(',').collect { it.trim() }.findAll { !it.isEmpty() })
+        }
+    }
+
+    signingConfigs {
+        release {
+            if (ksPropsFile.exists()) {
+                storeFile rootProject.file(ksProps.getProperty('storeFile'))
+                storePassword ksProps.getProperty('storePassword')
+                keyAlias ksProps.getProperty('keyAlias')
+                keyPassword ksProps.getProperty('keyPassword')
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            // 没有 keystore.properties 时跳过签名，出 unsigned 包也能编过
+            if (ksPropsFile.exists()) {
+                signingConfig signingConfigs.release
+            }
+        }
+        debug {
+            // 调试包也用同一把正式签名（如果有），避免真机上「签名不一致，无法覆盖安装」
+            if (ksPropsFile.exists()) {
+                signingConfig signingConfigs.release
+            }
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    kotlinOptions {
+        jvmTarget = '17'
+    }
+
+    // jniLibs 里的 libffmpeg.so 要能被解压成真实文件才能执行
+    packaging {
+        jniLibs {
+            useLegacyPackaging = true
+        }
+    }
+
+    lint {
+        abortOnError false
+    }
+}
+
+dependencies {
+    // 故意为空：零第三方依赖，连 androidx 都不用
+}

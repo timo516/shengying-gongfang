@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 深色配色：系统打开深色模式时自动生效（同名颜色资源覆盖默认值） -->
+<resources>
+    <color name="app_bg">#FF121212</color>
+
+    <color name="text_primary">#FFE8EAED</color>
+    <color name="text_secondary">#FF9AA0A6</color>
+    <color name="text_body">#FFBDC1C6</color>
+    <color name="text_hint">#FF9AA0A6</color>
+    <color name="accent">#FF8AB4F8</color>
+
+    <color name="wave_bg">#FF232427</color>
+    <color name="wave_line">#FF6B7280</color>
+    <color name="wave_sel">#FF8AB4F8</color>
+    <color name="wave_del">#66F28B82</color>
+    <color name="wave_sel_fill">#338AB4F8</color>
+    <color name="wave_handle">#FF8AB4F8</color>
+    <color name="wave_grip">#FF101114</color>
+    <color name="wave_playhead">#FFE8EAED</color>
+</resources>

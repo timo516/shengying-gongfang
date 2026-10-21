@@ -1,0 +1,38 @@
+内置 ffmpeg 二进制说明
+=====================
+
+libffmpeg.so 不是真正的共享库，而是「静态链接的 ffmpeg 可执行文件」重命名而来。
+这样命名只为一个目的：让 Gradle 把它当 native 库打进 APK 的 lib/<abi>/ 目录，
+安装后落到 nativeLibraryDir，成为 Android 唯一允许直接执行的位置。
+
+来源
+----
+https://github.com/Khang-NT/ffmpeg-binary-android
+release tag: 2018-07-31（ffmpeg 3.3.2，NDK r15c 构建，API 21+，PIE）
+
+各 ABI 的压缩包与体积：
+
+  arm64-v8a   17.8MB   arm64-v8a-full.tar.bz2   ← 仓库自带，解压后放到 jniLibs/arm64-v8a/
+  armeabi-v7a 16.5MB   armv7-a-full.tar.bz2
+  x86         19.9MB   i686-full.tar.bz2
+  x86_64      20.6MB   x86_64-full.tar.bz2
+
+构建配置包含 libx264 / libmp3lame / libfdk-aac / libopus / libvorbis / openssl，全静态链接。
+
+只放 arm64 的原因
+-----------------
+四份加起来约 75MB，全塞进仓库会让 clone 很痛苦。仓库默认只带 arm64-v8a 一份，
+日常手机够用；需要全量包时按上面的文件名补齐另外三个目录，再用
+  gradle assembleRelease -Pabi=arm64-v8a,armeabi-v7a,x86,x86_64
+打包即可（Release 页的 full 包就是这么来的）。
+
+替换 / 升级
+-----------
+找一份 arm64（或对应 ABI）的 PIE 静态 ffmpeg 构建，改名成 libffmpeg.so，
+覆盖对应目录里的文件，路径和文件名都别变，然后重新打包。
+
+许可证提示
+----------
+ffmpeg 本体是 GPL/LGPL 授权（这份构建带 libx264/libfdk-aac，属 GPL）。
+本仓库的 Kotlin 代码是 MIT，但打进 APK 分发的这个二进制仍受其自身许可证约束，
+再分发打包了它的 APK 时请自行满足 GPL 要求。
