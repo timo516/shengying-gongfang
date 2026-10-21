@@ -29,6 +29,24 @@
 
 ---
 
+## 截图
+
+**主界面**（左：浅色 / 右：深色）
+
+<p align="center">
+  <img src="docs/screenshots/light-main.jpg" width="300" alt="主界面 · 浅色模式">
+  <img src="docs/screenshots/dark-main.jpg" width="300" alt="主界面 · 深色模式">
+</p>
+
+**音频剪辑器**（左：浅色 / 右：深色）
+
+<p align="center">
+  <img src="docs/screenshots/light-editor.jpg" width="300" alt="音频剪辑器 · 浅色模式">
+  <img src="docs/screenshots/dark-editor.jpg" width="300" alt="音频剪辑器 · 深色模式">
+</p>
+
+---
+
 ## 功能
 
 ### 1. 提取音频
@@ -109,6 +127,7 @@ python3 -m mediakit.cli batch /sdcard/Movies -f m4a
 
 ```
 .
+├── docs/screenshots/           # 界面截图（浅色 / 深色）
 ├── android/                    # Android App（Kotlin，零依赖）
 │   ├── BUILD.md                # 构建、打包、真机验收说明
 │   ├── build.gradle            # AGP 8.5.2 / Kotlin 1.9.24
