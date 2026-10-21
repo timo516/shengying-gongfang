@@ -255,6 +255,14 @@ gradle assembleRelease            # 需要 JDK 17 + Gradle 8.7 + SDK 34
 
 ---
 
+## 安全
+
+发现问题请走私下渠道，见 [SECURITY.md](SECURITY.md)，不要在公开 issue 里贴细节。
+
+1.0.3 起签名证书指纹已公布（见 [验证安装包](#验证安装包)），对不上的包不是原版。
+
+---
+
 ## 鸣谢与许可
 
 - 本仓库代码：[MIT](LICENSE) © 2026 timo516

@@ -252,6 +252,14 @@ Bugs fixed along the way (all in the current code):
 
 ---
 
+## Security
+
+Found a problem? Please report it privately — see [SECURITY.md](SECURITY.md). Please don't open a public issue for security matters.
+
+Since 1.0.3 the app has a published signing certificate fingerprint (see [Verify the download](#verify-the-download)); a build that doesn't match it is not mine.
+
+---
+
 ## Credits & license
 
 - Code in this repo: [MIT](LICENSE) © 2026 timo516
