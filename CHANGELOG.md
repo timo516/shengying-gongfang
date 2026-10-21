@@ -6,8 +6,8 @@
 
 | 文件 | ABI | 大小 |
 |---|---|---|
-| `声影工坊-1.0.3-arm64.apk` | arm64-v8a | 8.7 MB |
-| `声影工坊-1.0.3-full.apk` | arm64-v8a / armeabi-v7a / x86 / x86_64 | 33.7 MB |
+| `shengying-gongfang-1.0.3-arm64.apk` | arm64-v8a | 8.7 MB |
+| `shengying-gongfang-1.0.3-full.apk` | arm64-v8a / armeabi-v7a / x86 / x86_64 | 33.7 MB |
 
 versionCode 5，minSdk 24 / targetSdk 34。
 

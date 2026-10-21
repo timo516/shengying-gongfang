@@ -96,8 +96,8 @@ python3 -m mediakit.cli batch /sdcard/Movies -f m4a
 
 | 文件 | ABI | 大小 | 适合谁 |
 |---|---|---|---|
-| `声影工坊-1.0.3-arm64.apk` | arm64-v8a | 8.7 MB | 近几年几乎所有手机，**优先选这个** |
-| `声影工坊-1.0.3-full.apk` | arm64-v8a / armeabi-v7a / x86 / x86_64 | 33.7 MB | 32 位老机型、模拟器、不确定架构时 |
+| `shengying-gongfang-1.0.3-arm64.apk` | arm64-v8a | 8.7 MB | 近几年几乎所有手机，**优先选这个** |
+| `shengying-gongfang-1.0.3-full.apk` | arm64-v8a / armeabi-v7a / x86 / x86_64 | 33.7 MB | 32 位老机型、模拟器、不确定架构时 |
 
 安装时系统会提示「未知来源应用」，允许即可；未上架任何应用商店。
 
