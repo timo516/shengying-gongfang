@@ -23,7 +23,7 @@ versionCode 5, minSdk 24 / targetSdk 34.
 ### Changed
 
 - **Switched to a release key** — RSA 4096, valid until 2056, V2 + V3 signature schemes. **Incompatible** with the debug signature used by 1.0.0–1.0.2, so older installs must be uninstalled first.
-- Results are saved through MediaStore to `Download/音视频提取剪辑软件/提取的音频包/` — no "all files access" permission is requested.
+- Results are saved through MediaStore straight to `Download/` — no "all files access" permission is requested.
 
 ---
 
@@ -44,5 +44,5 @@ First usable release:
 - Extract audio: m4a lossless (`-c:a copy`) / mp3 192k / flac / wav / aac / opus / ogg
 - Cut clips: quick cut (`-c copy`, keyframe-aligned) / precise cut (libx264 re-encode)
 - Share-sheet entry: send video/audio in from other apps
-- Results in `Download/音视频提取剪辑软件/提取的音频包/`, duplicate names get a counter
+- Results in `Download/`, duplicate names get a counter
 - Bundled ffmpeg static binary, no `INTERNET` permission

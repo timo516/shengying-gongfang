@@ -83,9 +83,9 @@ From the gallery, a file manager or WeChat, "Share → 声影工坊" sends the m
 
 ### 5. Where results go, and "Open folder"
 
-`Download/音视频提取剪辑软件/提取的音频包/`
+`Download/`
 
-Results are written through MediaStore into the public `Download` folder. Existing names get ` (1)`, ` (2)` — nothing is overwritten.
+Files go through MediaStore straight into the public `Download` folder — the app creates no subdirectory. Existing names get ` (1)`, ` (2)` — nothing is overwritten.
 
 The "Open folder" button probes the vendor file manager first (Xiaomi / OPPO / OnePlus / vivo / Huawei / Honor / Samsung / Meizu / Lenovo), then DocumentsUI, and if everything fails it copies the path to the clipboard and says so — never a dead button.
 

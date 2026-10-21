@@ -44,7 +44,7 @@ So even if ffmpeg isn't on `PATH`, you can drop the binary into `bin/`.
 ### Option 1: interactive menu (no commands to memorise)
 
 ```bash
-cd /storage/emulated/0/音视频提取剪辑软件
+cd /storage/emulated/0/mediakit      # wherever you put this folder
 python3 main.py
 ```
 
@@ -127,7 +127,7 @@ The tool decides from the source codec and never produces a "fake m4a" (an mp3 s
 ## 6. Layout
 
 ```
-音视频提取剪辑软件/
+mediakit/
 ├── main.py                 interactive entry point (menu)
 ├── README.md               this file
 ├── run.sh                  one-shot launcher

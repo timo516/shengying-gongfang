@@ -46,7 +46,7 @@ brew install ffmpeg
 ### 方式 1：交互菜单（最省事，不用记命令）
 
 ```bash
-cd /storage/emulated/0/音视频提取剪辑软件
+cd /storage/emulated/0/mediakit      # 你放这个工具的目录
 python3 main.py
 ```
 
@@ -129,7 +129,7 @@ python3 -m mediakit.cli batch /sdcard/Movies -o /sdcard/Download/音频 -f m4a
 ## 六、目录结构
 
 ```
-音视频提取剪辑软件/
+mediakit/
 ├── main.py                 交互式入口（菜单）
 ├── README.md               本文件
 ├── run.sh                  一键启动脚本

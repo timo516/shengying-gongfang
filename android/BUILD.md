@@ -66,7 +66,7 @@ gradle assembleRelease -Pabi=arm64-v8a,armeabi-v7a,x86,x86_64
 |---|---|
 | Launch the app | First line reads "已就绪（内置 ffmpeg，完全离线）" |
 | Pick a video | Duration, resolution, "video + audio" shown |
-| Tap "m4a 无损" | Finishes in seconds; `Download/音视频提取剪辑软件/提取的音频包/xxx.m4a` plays |
+| Tap "m4a 无损" | Finishes in seconds; `Download/xxx.m4a` plays |
 | Tap "mp3 192k" | Same, a `.mp3` appears |
 | Set start `0:05`, end `0:10`, quick cut | ~5 s clip (cut snaps to a keyframe) |
 | Same with precise cut | Clip is exactly 5.000 s |
