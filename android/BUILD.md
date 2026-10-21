@@ -1,19 +1,21 @@
-# Android 构建说明
+# Android build guide
 
-工程：`android/`（Kotlin，零第三方依赖，内置 ffmpeg 二进制）。
+Project: `android/` (Kotlin, no third-party dependencies, ffmpeg binary bundled).
+
+English | [中文说明](BUILD.zh-CN.md)
 
 ---
 
-## 1. 环境要求
+## 1. Requirements
 
-| 项 | 版本 |
+| Item | Version |
 |---|---|
 | JDK | 17 |
-| Gradle | 8.7（系统 `gradle` 即可，工程没带 wrapper） |
+| Gradle | 8.7 (system `gradle` is fine, no wrapper in the repo) |
 | Android SDK | platform-34 + build-tools 34.0.0 |
-| AGP / Kotlin | 8.5.2 / 1.9.24（`build.gradle` 里声明） |
+| AGP / Kotlin | 8.5.2 / 1.9.24 (declared in `build.gradle`) |
 
-没有安装 SDK 的机器：
+No SDK yet:
 
 ```bash
 yes | sdkmanager --licenses
@@ -22,19 +24,19 @@ sdkmanager "platforms;android-34" "build-tools;34.0.0"
 
 ---
 
-## 2. 构建
+## 2. Build
 
 ```bash
 cd android
-echo "sdk.dir=/你的/Android/Sdk" > local.properties    # 或改用 ANDROID_HOME 环境变量
+echo "sdk.dir=/path/to/Android/Sdk" > local.properties    # or set ANDROID_HOME
 
-gradle assembleDebug          # 产物 app/build/outputs/apk/debug/
-gradle assembleRelease        # 产物 app/build/outputs/apk/release/（需配签名，见第 5 节）
+gradle assembleDebug          # output: app/build/outputs/apk/debug/
+gradle assembleRelease        # output: app/build/outputs/apk/release/ (needs signing, see §5)
 ```
 
-也可以直接用 Android Studio 打开 `android/` 目录（**不是仓库根目录**），`Build → Build APK(s)`。
+You can also open `android/` in Android Studio (**not** the repo root) and use `Build → Build APK(s)`.
 
-**ABI** 默认只有 `arm64-v8a`（仓库只带了这一份 `libffmpeg.so`）。想打全量包，先按 `jniLibs说明.txt` 补齐其余三个 ABI 的二进制，再：
+**ABI** defaults to `arm64-v8a` only (that's the only `libffmpeg.so` in the repo). For a full build, add the other three binaries per [JNILIBS.md](JNILIBS.md), then:
 
 ```bash
 gradle assembleRelease -Pabi=arm64-v8a,armeabi-v7a,x86,x86_64
@@ -42,49 +44,49 @@ gradle assembleRelease -Pabi=arm64-v8a,armeabi-v7a,x86,x86_64
 
 ---
 
-## 3. 硬性约束（改了就坏）
+## 3. Hard constraints (breaking these breaks the app)
 
-1. **`jniLibs/arm64-v8a/libffmpeg.so` 必须原样保留。**
-   ① 必须在 `jniLibs/<abi>/` 下；② 必须是 `lib*.so` 命名（Gradle 只把这个模式当 native 库打包）；③ 内容其实是 ffmpeg **可执行文件**，不是真 `.so`——这是故意的。
+1. **Keep `jniLibs/arm64-v8a/libffmpeg.so` exactly as is.**
+   It must live under `jniLibs/<abi>/`; it must be named `lib*.so` (Gradle only packages that pattern as a native library); and its content is actually an ffmpeg **executable**, not a real shared object — that's intentional.
 
-2. **`packaging { jniLibs { useLegacyPackaging = true } }` 和 `android:extractNativeLibs="true"` 不能关。**
-   Android 从 API 29 起禁止执行 data 目录里的文件，`nativeLibraryDir` 是唯一合法执行位置。关了这两项，二进制不会被解压成真实文件，App 启动就报「找不到内置 ffmpeg」。
+2. **`packaging { jniLibs { useLegacyPackaging = true } }` and `android:extractNativeLibs="true"` must stay.**
+   Since API 29 Android forbids executing files in the data directory; `nativeLibraryDir` is the only legal location. Turn these off and the binary is never extracted as a real file, so the app reports "no bundled ffmpeg" on startup.
 
-3. **`abiFilters` 别乱加。** 没放对应二进制却声明了 ABI，只会让包变大、装上还跑不起来。
+3. **Don't declare ABIs you don't ship.** It only bloats the APK and still won't run.
 
-4. **不要开 `minifyEnabled true`**（没配 keep 规则），也不要加 `INTERNET` 权限——「完全离线」写在这一行。
+4. **Don't enable `minifyEnabled true`** (no keep rules configured), and don't add the `INTERNET` permission — "fully offline" depends on that line.
 
-5. **不要把 `keystore.properties` / `.jks` 提交进仓库。**
+5. **Never commit `keystore.properties` or a `.jks`.**
 
 ---
 
-## 4. 真机验收清单
+## 4. On-device checklist
 
-| 步骤 | 期望 |
+| Step | Expected |
 |---|---|
-| 打开 App | 第一行显示「已就绪（内置 ffmpeg，完全离线）」 |
-| 选一段手机拍的视频 | 显示时长、分辨率、「视频 音频」 |
-| 点「m4a 无损」 | 几秒完成，`Download/音视频提取剪辑软件/提取的音频包/xxx.m4a` 能播 |
-| 点「mp3 192k」 | 同上，出 `.mp3` |
-| 起点 `0:05`、终点 `0:10`，点快速剪 | 出一个 5 秒左右的片段（切口吸附关键帧） |
-| 同上点精确剪 | 片段时长为 5.000 秒 |
-| 点「编辑音频」 | 波形出现，能拖动选区、标记删除、试听、导出 |
-| 飞行模式下重跑上面任意一步 | 全部正常 → 离线验证通过 |
+| Launch the app | First line reads "已就绪（内置 ffmpeg，完全离线）" |
+| Pick a video | Duration, resolution, "video + audio" shown |
+| Tap "m4a 无损" | Finishes in seconds; `Download/音视频提取剪辑软件/提取的音频包/xxx.m4a` plays |
+| Tap "mp3 192k" | Same, a `.mp3` appears |
+| Set start `0:05`, end `0:10`, quick cut | ~5 s clip (cut snaps to a keyframe) |
+| Same with precise cut | Clip is exactly 5.000 s |
+| Tap "编辑音频" | Waveform appears; selection, delete marks, audition and export all work |
+| Rerun any of the above in airplane mode | Everything still works → offline verified |
 
 ---
 
-## 5. 签名
+## 5. Signing
 
-仓库不带任何签名材料。要用自己的签名：
+The repo ships no signing material. To use your own:
 
 ```bash
 cp keystore.properties.example keystore.properties
-# 填 storeFile / storePassword / keyAlias / keyPassword
+# fill in storeFile / storePassword / keyAlias / keyPassword
 ```
 
-`app/build.gradle` 会在 `keystore.properties` 存在时把 release 和 debug 都指到这份签名上（避免真机上 debug/release 签名不一致导致无法覆盖安装）；文件不存在则跳过签名，产出 unsigned 包。
+When `keystore.properties` exists, `app/build.gradle` points both release and debug at that key (so debug and release builds share a signature and can overwrite each other on a device). Without the file, signing is skipped and the build produces an unsigned APK.
 
-没有 `keystore.properties` 时手工签：
+Sign by hand without the properties file:
 
 ```bash
 gradle assembleRelease
@@ -92,36 +94,36 @@ apksigner sign --ks your.jks --out app-release.apk \
   app/build/outputs/apk/release/app-release-unsigned.apk
 ```
 
-> 换签名会让老用户无法覆盖升级（报「签名不一致」），发布前想清楚。建议长期保存 keystore 与密码。
+> Changing keys makes existing users unable to upgrade over the top ("signature mismatch"). Decide before you publish, and keep the keystore and password somewhere safe.
 
 ---
 
-## 6. 常见问题
+## 6. FAQ
 
-**Q：第一行显示「没找到内置 ffmpeg」？**
-A：① 设备 CPU 架构不在包内（本仓库只有 arm64）；② `libffmpeg.so` 被删/改名；③ `extractNativeLibs` 被关掉。
+**Q: First line says "no bundled ffmpeg".**
+A: ① the device ABI isn't in the APK (this repo is arm64 only); ② `libffmpeg.so` was removed or renamed; ③ `extractNativeLibs` was turned off.
 
-**Q：快速剪出来的起点比要求的早？**
-A：`-c copy` 只能切在关键帧上，起点会吸附到最近关键帧。要严格就用「精确剪」。
+**Q: Quick cut starts earlier than requested.**
+A: `-c copy` can only cut on keyframes, so the start snaps to the nearest one. Use precise cut when it must be exact.
 
-**Q：包有多大？**
-A：ffmpeg 二进制 17 MB（arm64），APK 约 8.7 MB（arm64）/ 33.7 MB（四 ABI）。
+**Q: How big is the APK?**
+A: ffmpeg is 17 MB (arm64), giving ~8.7 MB for the arm64 APK and ~33.7 MB for the 4-ABI APK.
 
-**Q：想换更新的 ffmpeg？**
-A：找 arm64 的 PIE 静态构建，替换 `jniLibs/arm64-v8a/libffmpeg.so`，文件名和位置不变即可。
+**Q: Can I swap in a newer ffmpeg?**
+A: Get a PIE static build for the target ABI, replace `jniLibs/<abi>/libffmpeg.so`, keep the name and location.
 
 ---
 
-## 7. 在 arm64 主机（Termux / proot）上构建的坑
+## 7. Building on an arm64 host (Termux / proot)
 
-x86_64 电脑不用看这节。宿主机是 arm64 时会遇到：
+Skip this on x86_64 machines. On an arm64 host you'll hit:
 
 ```
 AAPT2 Daemon startup failed
 .../build-tools/34.0.0/aapt2: cannot execute: required file not found
 ```
 
-因为 Google 只发 **x86_64** 版 `aapt2`。解决办法（qemu 用户态模拟）：
+because Google only ships an **x86_64** `aapt2`. Work around it with qemu user-mode emulation:
 
 ```bash
 apt install -y qemu-user-static
@@ -133,14 +135,14 @@ printf '#!/bin/sh\nexec /usr/bin/qemu-x86_64-static /opt/android-sdk/build-tools
 chmod 755 /opt/bin/aapt2
 ```
 
-构建时通过命令行参数指过去（**不要**写进工程的 `gradle.properties`，否则会污染别人的构建）：
+Then pass it on the command line (do **not** put it in the project's `gradle.properties`, that would break everyone else's build):
 
 ```bash
 gradle assembleDebug -Pandroid.aapt2FromMavenOverride=/opt/bin/aapt2 --no-daemon
 ```
 
-另外：
+Also:
 
-- 别在 sdcard 目录里直接跑 Gradle（FUSE 的锁文件和权限会出问题），先 `cp -a` 到本地盘。
-- 后台跑 Gradle 时日志里的 `DisconnectableInputStream ... Bad file descriptor` 是 nohup 无 stdin 的噪音，不影响结果。
-- 换过资源文件后若报 `mergeReleaseResources ... no data file for changedFile`，`gradle clean` 重来。
+- Don't run Gradle inside an sdcard directory (FUSE locking and permissions break); `cp -a` to a local disk first.
+- `DisconnectableInputStream ... Bad file descriptor` in logs from a background Gradle run is nohup noise without stdin — harmless.
+- If you see `mergeReleaseResources ... no data file for changedFile` after changing resources, run `gradle clean` and retry.
