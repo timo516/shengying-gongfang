@@ -83,13 +83,9 @@ From the gallery, a file manager or WeChat, "Share → 声影工坊" sends the m
 
 ### 5. Where results go, and "Open folder"
 
-Default output directory:
+`Download/音视频提取剪辑软件/提取的音频包/`
 
-```
-Internal storage/音视频提取剪辑软件/提取的音频包/
-```
-
-Without the "All files access" permission it falls back to `Download/音视频提取剪辑软件/提取的音频包/`, so results always land somewhere. Existing names get ` (1)`, ` (2)` — nothing is overwritten.
+Results are written through MediaStore into the public `Download` folder. Existing names get ` (1)`, ` (2)` — nothing is overwritten.
 
 The "Open folder" button probes the vendor file manager first (Xiaomi / OPPO / OnePlus / vivo / Huawei / Honor / Samsung / Meizu / Lenovo), then DocumentsUI, and if everything fails it copies the path to the clipboard and says so — never a dead button.
 

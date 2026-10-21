@@ -23,7 +23,7 @@ versionCode 5, minSdk 24 / targetSdk 34.
 ### Changed
 
 - **Switched to a release key** — RSA 4096, valid until 2056, V2 + V3 signature schemes. **Incompatible** with the debug signature used by 1.0.0–1.0.2, so older installs must be uninstalled first.
-- Output directory policy: with "All files access" results go to `Internal storage/音视频提取剪辑软件/提取的音频包/`, otherwise to `Download/音视频提取剪辑软件/提取的音频包/`.
+- Results are saved through MediaStore to `Download/音视频提取剪辑软件/提取的音频包/` — no "all files access" permission is requested.
 
 ---
 
