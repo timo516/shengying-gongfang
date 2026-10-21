@@ -123,6 +123,45 @@ python3 -m mediakit.cli batch /sdcard/Movies -f m4a
 
 > **签名说明**：1.0.3 起换成正式签名（RSA 4096，有效期至 2056 年），与 1.0.0～1.0.2 的 debug 签名**不兼容**。如果你装过旧版，需要先卸载再装 1.0.3，否则会报「应用未安装 / 签名不一致」。之后各版本都能直接覆盖升级。
 
+### 验证安装包
+
+**唯一官方发布渠道是本仓库的 Releases 页面：**
+<https://github.com/timo516/shengying-gongfang/releases>
+
+只有在上面发布的安装包才是未被篡改的原始版本。网盘、论坛、第三方应用站、群里转发的安装包都无法确认来源——重新打包过的 APK 可以额外加入权限，所以「无网络权限」这个保证只对原版成立。
+
+**签名证书 SHA-256** —— 1.0.3 的 v1 / v2 / v3 三个签名块用的是同一张证书，本项目后续版本也会继续使用（换证书会导致老用户无法覆盖升级）：
+
+```
+EF:4C:A4:77:06:01:7A:BE:4A:19:2C:11:52:7B:0C:7D:6C:B9:A2:B8:D6:70:A1:87:66:67:D2:64:13:ED:39:9E
+```
+
+自己校验，装了 Android SDK 的话：
+
+```bash
+apksigner verify --print-certs shengying-gongfang-1.0.3-arm64.apk
+```
+
+只有 JDK 也行：
+
+```bash
+keytool -printcert -jarfile shengying-gongfang-1.0.3-arm64.apk
+```
+
+输出里必须包含上面那串指纹；对不上就说明不是原版，别装。
+
+**文件校验值（SHA-256）：**
+
+| 文件 | SHA-256 |
+|---|---|
+| `shengying-gongfang-1.0.3-arm64.apk` | `b52a5c17aff07b7477b048f1920cba52d406c0cc63b0c94acb2c3dd1ff4263e7` |
+| `shengying-gongfang-1.0.3-full.apk` | `5ff77c46a445d21bd1491c956c94f5b4380e97a7947d32a51fcae7f682357e9a` |
+
+手机上也能自查两步：
+
+1. 设置 → 应用 → 声影工坊 → 权限，不应出现任何「网络」相关权限
+2. 任意「APK 签名校验」类应用，显示的证书指纹应与上面一致
+
 ---
 
 ## 项目结构

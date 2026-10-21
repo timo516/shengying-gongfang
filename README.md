@@ -122,6 +122,45 @@ Android will ask you to allow "install from unknown sources"; this app is not on
 
 > **Signing:** since 1.0.3 the app uses a real release key (RSA 4096, valid until 2056). It is **not compatible** with the debug signature used in 1.0.0–1.0.2: if you have an older build installed, uninstall it first, otherwise the install fails with "App not installed / signature mismatch". Every version after this one installs over the top.
 
+### Verify the download
+
+**The only official release channel is this repository's Releases page:**
+<https://github.com/timo516/shengying-gongfang/releases>
+
+Only the APKs published there are the original, unmodified build. Packages from cloud drives, forums, third-party app sites, chat groups or "a friend sent me this" cannot be trusted: a repackaged APK can add permissions, so the "no network permission" guarantee only holds for the original.
+
+**Signing certificate SHA-256** — the v1, v2 and v3 signature blocks of 1.0.3 all use this one certificate, and every future version will too (a different key would break in-place upgrades):
+
+```
+EF:4C:A4:77:06:01:7A:BE:4A:19:2C:11:52:7B:0C:7D:6C:B9:A2:B8:D6:70:A1:87:66:67:D2:64:13:ED:39:9E
+```
+
+Verify it yourself, with the Android SDK:
+
+```bash
+apksigner verify --print-certs shengying-gongfang-1.0.3-arm64.apk
+```
+
+or with nothing but a JDK:
+
+```bash
+keytool -printcert -jarfile shengying-gongfang-1.0.3-arm64.apk
+```
+
+The output must contain the fingerprint above. If it doesn't, the file is not my build — do not install it.
+
+**File checksums (SHA-256):**
+
+| File | SHA-256 |
+|---|---|
+| `shengying-gongfang-1.0.3-arm64.apk` | `b52a5c17aff07b7477b048f1920cba52d406c0cc63b0c94acb2c3dd1ff4263e7` |
+| `shengying-gongfang-1.0.3-full.apk` | `5ff77c46a445d21bd1491c956c94f5b4380e97a7947d32a51fcae7f682357e9a` |
+
+Two checks you can do on the phone itself:
+
+1. Android Settings → Apps → 声影工坊 → Permissions — there must be **no network-related permission**.
+2. Any "APK signature checker" app will show the same certificate fingerprint.
+
 ---
 
 ## Project layout
