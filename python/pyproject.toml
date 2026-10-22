@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mediakit"
+version = "1.1.0"
+description = "本地音视频提取与剪辑（纯标准库 + 系统 ffmpeg，无广告、不联网）"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+dependencies = []
+
+[project.scripts]
+mediakit = "mediakit.cli:main"
+
+[tool.setuptools]
+packages = ["mediakit"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]

@@ -5,6 +5,7 @@ import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.media.MediaMetadataRetriever
 import android.net.Uri
+import java.util.Locale
 
 /** 媒体信息探测。先用 MediaMetadataRetriever（宽容），拿不到再用 MediaExtractor 兜底。 */
 object MediaInfo {
@@ -14,19 +15,17 @@ object MediaInfo {
         val width: Int,
         val height: Int,
         val hasAudio: Boolean,
-        val hasVideo: Boolean,
-        val mime: String
+        val hasVideo: Boolean
     ) {
         val durationText: String
             get() {
                 if (durationMs <= 0) return "未知"
                 val s = durationMs / 1000
-                return "%d:%02d".format(s / 60, s % 60)
+                return String.format(Locale.US, "%d:%02d", s / 60, s % 60)
             }
     }
 
     fun probe(ctx: Context, uri: Uri): Info {
-        val mime = ctx.contentResolver.getType(uri) ?: ""
         var duration = 0L
         var w = 0
         var h = 0
@@ -81,6 +80,6 @@ object MediaInfo {
             }
         }
 
-        return Info(duration, w, h, hasAudio, hasVideo, mime)
+        return Info(duration, w, h, hasAudio, hasVideo)
     }
 }

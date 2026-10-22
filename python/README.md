@@ -5,7 +5,7 @@ This is the Python CLI counterpart to [ShengYing GongFang](../README.md) — sam
 A small local tool: pull audio out of videos, cut clips by timestamp, batch-extract a whole folder.
 **No ads, no network, no upload, no sign-in** — everything runs locally through ffmpeg.
 
-- Python standard library only, plus the ffmpeg already on your system. No pip dependencies.
+- Python standard library only, plus the ffmpeg already on your system. No third-party packages needed (`pip install -e .` if you'd rather have a `mediakit` command).
 - Lossless by default: when the track codec matches, it does `-c:a copy` and moves bytes — no quality loss at all.
 
 ---
@@ -83,7 +83,7 @@ python3 -m mediakit.cli clip video.mp4 --start 0:10 --end 0:40 --audio
 python3 -m mediakit.cli batch /sdcard/Movies -o /sdcard/Download/audio -f m4a
 ```
 
-Output goes to `output/` by default; existing names aren't overwritten, they become `xxx (1).m4a`.
+Output goes to `~/mediakit-output/` by default (`%USERPROFILE%\mediakit-output` on Windows); existing names aren't overwritten, they become `xxx (1).m4a`.
 Set `MEDIAKIT_OUT` to change the default output directory.
 
 ---
@@ -127,11 +127,12 @@ The tool decides from the source codec and never produces a "fake m4a" (an mp3 s
 ## 6. Layout
 
 ```
-mediakit/
+python/
 ├── main.py                 interactive entry point (menu)
 ├── README.md               this file
 ├── run.sh                  one-shot launcher
-├── output/                 default output directory (created on demand)
+├── pyproject.toml          optional: pip install -e . for a `mediakit` command
+├── tests/                  unittest (22 tests)
 └── mediakit/
     ├── __init__.py         version, public exports
     ├── utils.py            timestamp parsing, file sizes, name sanitising, dedupe

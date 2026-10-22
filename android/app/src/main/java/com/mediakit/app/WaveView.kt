@@ -61,11 +61,16 @@ class WaveView(context: Context) : View(context) {
     var onSeek: ((Long) -> Unit)? = null
     var onSelectionChanged: (() -> Unit)? = null
 
+    init {
+        // Canvas 自绘的图，读屏软件只能靠这句话知道这是什么、选到哪了
+        contentDescription = "音频波形时间轴"
+    }
+
     private val d = resources.displayMetrics.density
     private val inset = 14f * d
     private val handleHalf = 9f * d
     private val grab = 30f * d
-    private val minSelMs = 300L
+    private val minSelMs = Timeline.MIN_SEL_MS
 
     private val bgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = context.getColor(R.color.wave_bg) }
     private val wavePaint = Paint().apply { color = context.getColor(R.color.wave_line) }
@@ -217,6 +222,8 @@ class WaveView(context: Context) : View(context) {
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                 mode = 0
                 parent?.requestDisallowInterceptTouchEvent(false)
+                contentDescription =
+                    "波形，选区 ${Fmt.clock(selStartMs)} 到 ${Fmt.clock(selEndMs)}，全长 ${Fmt.clock(durationMs)}"
                 return true
             }
         }

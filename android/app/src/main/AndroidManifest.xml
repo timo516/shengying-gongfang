@@ -3,12 +3,19 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <!-- 没有网络权限：这个 App 从物理上就无法联网 -->
-    <uses-permission
-        android:name="android.permission.READ_EXTERNAL_STORAGE"
-        android:maxSdkVersion="32" />
+    <!--
+      权限只有两条：
+      1) WRITE_EXTERNAL_STORAGE —— 只在 API 28 及以下用于直写公共 Download；
+         API 29+ 走 MediaStore，不需要任何存储权限。
+      2) 前台服务 + dataSync 类型 —— 长任务期间别被系统当缓存进程回收（API 34 起必须声明类型）。
+      读存储权限不需要：选文件走 SAF，拿到的 Uri 自带读授权。
+    -->
     <uses-permission
         android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         android:maxSdkVersion="28" />
+
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
 
     <!-- Android 11+ 包可见性：不声明这些，就查不到/起不来别家的文件管理器 -->
     <queries>
@@ -41,19 +48,18 @@
     <application
         android:allowBackup="false"
         android:enableOnBackInvokedCallback="true"
-        android:extractNativeLibs="true"
         android:icon="@mipmap/ic_launcher"
         android:label="声影工坊"
-        android:requestLegacyExternalStorage="true"
         android:roundIcon="@mipmap/ic_launcher"
         android:supportsRtl="true"
         android:theme="@style/AppTheme"
-        tools:targetApi="33">
+        tools:targetApi="34">
 
         <activity
             android:name=".MainActivity"
             android:exported="true"
             android:label="声影工坊"
+            android:launchMode="singleTop"
             android:configChanges="orientation|screenSize|keyboardHidden">
 
             <intent-filter>
@@ -79,6 +85,11 @@
             android:exported="false"
             android:label="音频剪辑器"
             android:configChanges="orientation|screenSize|keyboardHidden" />
+
+        <service
+            android:name=".WorkService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
     </application>
 
 </manifest>

@@ -32,4 +32,6 @@ Find a PIE static ffmpeg build for the target ABI, rename it to `libffmpeg.so`, 
 
 ## License note
 
-ffmpeg itself is GPL/LGPL (this build includes libx264 and libfdk-aac, so GPL applies). The Kotlin code in this repo is MIT, but the bundled binary keeps its own license — if you redistribute an APK containing it, satisfy the GPL on your own.
+ffmpeg itself is GPL/LGPL, but this particular build was produced with `--enable-nonfree` so that libfdk-aac could be linked in (libfdk-aac's license is not GPL-compatible). The practical consequence: **the resulting binary — and therefore an APK containing it — is not redistributable.** Keep that in mind if you republish the app; replace the binary with a GPL-only build (libx264 + native aac) first.
+
+The Kotlin code in this repo is MIT; the bundled binary keeps its own license.

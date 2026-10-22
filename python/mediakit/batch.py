@@ -30,12 +30,18 @@ def iter_media(root, recursive: bool = False, kinds: str = "all") -> List[Path]:
 
     pattern = "**/*" if recursive else "*"
     files = []
+    out_dir = config.DEFAULT_OUTPUT_DIR
     for p in root.glob(pattern):
-        if p.is_file() and p.suffix.lower() in exts:
-            # 跳过自己产出的 output 目录
-            if any(part == "output" for part in p.parts):
-                continue
-            files.append(p)
+        if not p.is_file() or p.suffix.lower() not in exts:
+            continue
+        # 跳过自己产出的目录。以前判断的是"路径里任意一层叫 output"，
+        # 连 /home/me/output/movies 这种正常素材目录也会被误杀
+        try:
+            p.relative_to(out_dir)
+            continue
+        except ValueError:
+            pass
+        files.append(p)
 
     return sorted(files)
 

@@ -5,16 +5,13 @@ import android.view.WindowManager
 import android.widget.Toast
 
 /**
- * 长任务提示（折中方案）。
+ * 长任务保障。
  *
- * 没有引入前台服务：那需要 FOREGROUND_SERVICE 权限 + 常驻通知 + targetSdk 34 的
- * 前台服务类型声明，对一个「本地小工具」来说太重。
- * 现在的做法是：
- *  1) 任务开跑前弹一条明确提示：保持本页在前台 / 可分屏或开小窗 / 别切后台；
- *  2) 任务期间加 FLAG_KEEP_SCREEN_ON，屏幕不会自己熄灭（熄屏是后台冻结最常见的起点）；
- *  3) 任务结束立刻撤掉标记。
- *
- * 剩下的风险（用户手动切走、系统低内存回收）靠上面的提示让用户自己规避。
+ * 1.0.3 只有「提示 + 屏幕常亮」，代价是用户切后台后进程随时可能被当缓存回收，
+ * 跑了几分钟的活回来只剩半截文件。1.1.0 起改成：
+ *   1) 前台服务（[WorkService]）—— 切后台/锁屏也不回收；
+ *   2) FLAG_KEEP_SCREEN_ON —— 屏幕不会自己熄灭（熄屏是后台冻结最常见的起点）；
+ *   3) 开跑前一条明确提示。
  */
 object LongTask {
 
@@ -28,27 +25,28 @@ object LongTask {
 
     fun isLongBytes(bytes: Long): Boolean = bytes >= THRESHOLD_BYTES
 
-    /** 长任务开始：屏幕常亮 + 提示别切后台 */
-    fun start(activity: Activity) {
+    fun start(activity: Activity, title: String = "处理中") {
         try {
             activity.window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         } catch (_: Throwable) {
         }
+        WorkService.start(activity.applicationContext, title)
         try {
             Toast.makeText(
                 activity,
-                "⏳ 长任务：请保持本页在前台（可分屏或开小窗），别切到后台，否则系统可能中断处理",
+                "⏳ 长任务：已开后台保护，切走也不会被系统中断（别手动划掉本应用）",
                 Toast.LENGTH_LONG
             ).show()
         } catch (_: Throwable) {
         }
     }
 
-    /** 任务结束（成功或失败都调用），撤销屏幕常亮 */
+    /** 任务结束（成功或失败都调），撤掉常亮和前台服务 */
     fun stop(activity: Activity) {
         try {
             activity.window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         } catch (_: Throwable) {
         }
+        WorkService.stop(activity.applicationContext)
     }
 }

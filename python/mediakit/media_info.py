@@ -136,12 +136,16 @@ _VID_RE = re.compile(r"Stream #\d+:\d+.*?:\s*Video:\s*([A-Za-z0-9_]+).*?(\d{2,5}
 
 
 def _probe_with_ffmpeg(p: Path, info: MediaInfo) -> MediaInfo:
-    """没有 ffprobe 时的兜底：解析 ffmpeg -i 的 stderr。"""
+    """没有 ffprobe 时的兜底：解析 ffmpeg -i 的 stderr。
+
+    ffmpeg -i 不带输出文件时一定返回非 0，报错文本就是我们要的信息；
+    这里必须拿 FFmpegError.output（完整输出），不能用 str(e)（只有末尾 12 行）。
+    """
     text = ""
     try:
         ft.run([ft.ffmpeg(), "-hide_banner", "-i", str(p)])
     except ft.FFmpegError as e:
-        text = str(e)
+        text = e.output or str(e)
 
     m = _DUR_RE.search(text)
     if m:
@@ -159,9 +163,14 @@ def _probe_with_ffmpeg(p: Path, info: MediaInfo) -> MediaInfo:
 
     mv = _VID_RE.search(text)
     if mv:
-        info.video_codec = mv.group(1)
-        info.width = int(mv.group(2))
-        info.height = int(mv.group(3))
+        # 封面图（attached pic）也算 video 流，但那不是"视频文件"
+        line_start = text.rfind("\n", 0, mv.start()) + 1
+        line_end = text.find("\n", mv.end())
+        line = text[line_start: line_end if line_end != -1 else len(text)]
+        if "attached pic" not in line:
+            info.video_codec = mv.group(1)
+            info.width = int(mv.group(2))
+            info.height = int(mv.group(3))
 
     return info
 

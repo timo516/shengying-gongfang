@@ -18,8 +18,8 @@ android {
         applicationId "com.mediakit.app"
         minSdk 24
         targetSdk 34
-        versionCode 5
-        versionName "1.0.3"
+        versionCode 6
+        versionName "1.1.0"
 
         // ABI 可配置：默认只打 arm64-v8a（仓库里只带这一份 libffmpeg.so）。
         // 想打全量包，把四份 libffmpeg.so 都放进 jniLibs，再用
@@ -74,10 +74,14 @@ android {
     }
 
     lint {
-        abortOnError false
+        // 别再关掉：String.format 不带 Locale 这类问题正是它抓的
+        abortOnError true
+        checkReleaseBuilds true
     }
 }
 
 dependencies {
-    // 故意为空：零第三方依赖，连 androidx 都不用
+    // 运行期零第三方依赖（连 androidx 都不用）。
+    // 这里只有测试期依赖：不参与打包，APK 里不会多一行。
+    testImplementation 'junit:junit:4.13.2'
 }

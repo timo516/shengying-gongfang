@@ -1,0 +1,67 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  python:
+    name: Python 单测 + ffmpeg 参数回归
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 装 ffmpeg（smoke 要用；顺带证明"只用系统 ffmpeg"这条成立）
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
+
+      - name: 单测（纯函数，不需要 ffmpeg）
+        run: cd python && python -m unittest discover -s tests -v
+
+      - name: 生成素材 + 参数回归
+        run: |
+          ./tools/make-fixtures.sh
+          ./tools/smoke.sh
+
+  android:
+    name: Android 编译 + JVM 单测
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      # 负责装 cmdline-tools 并接受 license（AGP 需要平台 34 与 build-tools 34）
+      - uses: android-actions/setup-android@v3
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.7"
+
+      - name: 指向 SDK
+        run: echo "sdk.dir=$ANDROID_HOME" > android/local.properties
+
+      - name: 编译 + 单测
+        run: cd android && gradle --no-daemon --console=plain assembleDebug testDebugUnitTest
+
+      - name: 测试报告
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: android/app/build/reports/tests/
+          if-no-files-found: ignore
+
+      - name: Debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug
+          path: android/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: ignore

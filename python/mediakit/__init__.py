@@ -6,6 +6,6 @@
 3. 默认不做二次压缩：能 copy 就 copy，音质画质零损失、速度快。
 """
 
-__version__ = "0.1.0"
+__version__ = "1.1.0"
 
 from . import config, ffmpeg_tool, media_info, extract, clip, batch  # noqa: F401

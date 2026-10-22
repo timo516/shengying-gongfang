@@ -21,9 +21,9 @@ Everything runs on the device, using an **ffmpeg static binary shipped inside th
 |---|---|
 | App name | 声影工坊 |
 | Package | `com.mediakit.app` |
-| Version | 1.0.3 (versionCode 5) |
+| Version | 1.1.0 (versionCode 6) |
 | Min / target SDK | 24 (Android 7.0) / 34 (Android 14) |
-| Language & deps | Kotlin, stock Android widgets only — `dependencies {}` is empty, not even androidx |
+| Language & deps | Kotlin, stock Android widgets only — the runtime `dependencies {}` is empty (junit is test-only), not even androidx |
 | Engine | ffmpeg 3.3.2 static build (libx264 / libmp3lame / libfdk-aac / libopus / libvorbis) |
 | Network permission | **none** |
 | APK size | 8.7 MB (arm64) / 33.7 MB (4 ABIs) |
@@ -55,7 +55,7 @@ Everything runs on the device, using an **ffmpeg static binary shipped inside th
 | Output | How |
 |---|---|
 | **m4a (lossless)** | If the source track is AAC it's remuxed with `-c:a copy` — byte-for-byte, a few seconds, zero quality loss |
-| mp3 192k / flac / wav / aac / opus / ogg | Transcoded when needed |
+| mp3 192k / flac / wav | Transcoded when needed (libmp3lame / flac / pcm_s16le) |
 
 No fake m4a: if the source isn't AAC and you picked m4a, it re-encodes to AAC instead of stuffing an mp3 stream into an `.m4a` container.
 
@@ -91,7 +91,7 @@ The "Open folder" button probes the vendor file manager first (Xiaomi / OPPO / O
 
 ### 6. Command-line version (Python)
 
-`python/` holds the same feature set for a desktop or Termux, standard library only plus the system ffmpeg — no pip dependencies:
+`python/` holds the same feature set for a desktop or Termux: standard library only plus the system ffmpeg, runnable with no install step (or `pip install -e python/` if you want the `mediakit` command):
 
 ```bash
 python3 main.py                      # interactive menu
@@ -111,12 +111,12 @@ Grab the APK from [Releases](https://github.com/timo516/shengying-gongfang/relea
 
 | File | ABI | Size | Who it's for |
 |---|---|---|---|
-| `shengying-gongfang-1.0.3-arm64.apk` | arm64-v8a | 8.7 MB | Almost every phone from the last few years — **pick this one** |
-| `shengying-gongfang-1.0.3-full.apk` | arm64-v8a / armeabi-v7a / x86 / x86_64 | 33.7 MB | 32-bit devices, emulators, or if you're unsure |
+| `shengying-gongfang-1.1.0-arm64.apk` | arm64-v8a | 8.7 MB | Almost every phone from the last few years — **pick this one** |
+| `shengying-gongfang-1.1.0-full.apk` | arm64-v8a / armeabi-v7a / x86 / x86_64 | 33.7 MB | 32-bit devices, emulators, or if you're unsure |
 
 Android will ask you to allow "install from unknown sources"; this app is not on any store.
 
-> **Signing:** since 1.0.3 the app uses a real release key (RSA 4096, valid until 2056). It is **not compatible** with the debug signature used in 1.0.0–1.0.2: if you have an older build installed, uninstall it first, otherwise the install fails with "App not installed / signature mismatch". Every version after this one installs over the top.
+> **Signing:** since 1.0.3 the app uses a real release key (RSA 4096, valid until 2056). It is **not compatible** with the debug signature used in 1.0.0–1.0.2: if you have an older build installed, uninstall it first, otherwise the install fails with "App not installed / signature mismatch". Every version after this one installs over the top; 1.1.0 keeps the same certificate.
 
 ### Verify the download
 
@@ -134,13 +134,13 @@ EF:4C:A4:77:06:01:7A:BE:4A:19:2C:11:52:7B:0C:7D:6C:B9:A2:B8:D6:70:A1:87:66:67:D2
 Verify it yourself, with the Android SDK:
 
 ```bash
-apksigner verify --print-certs shengying-gongfang-1.0.3-arm64.apk
+apksigner verify --print-certs shengying-gongfang-1.1.0-arm64.apk
 ```
 
 or with nothing but a JDK:
 
 ```bash
-keytool -printcert -jarfile shengying-gongfang-1.0.3-arm64.apk
+keytool -printcert -jarfile shengying-gongfang-1.1.0-arm64.apk
 ```
 
 The output must contain the fingerprint above. If it doesn't, the file is not my build — do not install it.
@@ -149,8 +149,8 @@ The output must contain the fingerprint above. If it doesn't, the file is not my
 
 | File | SHA-256 |
 |---|---|
-| `shengying-gongfang-1.0.3-arm64.apk` | `b52a5c17aff07b7477b048f1920cba52d406c0cc63b0c94acb2c3dd1ff4263e7` |
-| `shengying-gongfang-1.0.3-full.apk` | `5ff77c46a445d21bd1491c956c94f5b4380e97a7947d32a51fcae7f682357e9a` |
+| `shengying-gongfang-1.1.0-arm64.apk` | `ac2e38b1b49e4bd84db02b6bf99852851c61e8890040df90421d08929c84cd63` |
+| `shengying-gongfang-1.1.0-full.apk` | `b3ef52d3ec66b90d9d4c3c5b5db532c85d7eabd6661096898142bfd6093e251b` |
 
 Two checks you can do on the phone itself:
 
@@ -177,17 +177,30 @@ Two checks you can do on the phone itself:
 │           ├── java/com/mediakit/app/
 │           │   ├── MainActivity.kt        # pick file → show info → extract / cut
 │           │   ├── AudioEditorActivity.kt # waveform editor: selection, multi-delete, export
+│           │   ├── BaseActivity.kt        # shared widget builders + "is the UI still alive"
 │           │   ├── Ffmpeg.kt              # locate and run libffmpeg.so, parse -progress
+│           │   ├── FfmpegArgs.kt          # pure functions: args per container/codec (unit-tested)
+│           │   ├── Fmt.kt                 # time parsing & formatting (always Locale.US)
+│           │   ├── Timeline.kt            # kept-range merge, totals, waveform buckets (unit-tested)
+│           │   ├── Names.kt               # filename sanitising & dedupe (unit-tested)
+│           │   ├── Storage.kt             # free-space checks, cache work dir
 │           │   ├── MediaInfo.kt           # duration / resolution / has-audio
 │           │   ├── Output.kt              # save, dedupe names, open vendor file manager
 │           │   ├── Perm.kt                # storage permissions
+│           │   ├── WorkService.kt         # foreground service (long jobs survive)
 │           │   ├── LongTask.kt            # long-job warning + keep screen on
 │           │   └── WaveView.kt            # waveform rendering
 │           ├── res/                       # themes (incl. night), adaptive icon
 │           └── jniLibs/arm64-v8a/libffmpeg.so   # bundled ffmpeg (17 MB, don't rename)
+├── tools/
+│   ├── make-fixtures.sh         # build regression fixtures (needs a local ffmpeg)
+│   └── smoke.sh                 # 13 CLI smoke checks, incl. 3 negative controls
+├── .github/workflows/ci.yml     # CI: Python tests + Android unit tests + lint
 └── python/                     # CLI / desktop version (standard library only)
     ├── main.py
     ├── mediakit/               # info / extract / clip / batch / check
+    ├── tests/                  # unittest (22 tests)
+    ├── pyproject.toml          # optional: pip install -e . for the `mediakit` command
     └── README.md
 ```
 
@@ -201,6 +214,7 @@ Full steps in [android/BUILD.md](android/BUILD.md). Short version:
 cd android
 echo "sdk.dir=/path/to/Android/Sdk" > local.properties   # or set ANDROID_HOME
 gradle assembleRelease            # needs JDK 17 + Gradle 8.7 + SDK 34
+gradle testDebugUnitTest          # JVM tests: time parsing, arg building, range merging
 ```
 
 > The repo ships only the **arm64-v8a** `libffmpeg.so` (17 MB, to keep clones bearable). For a 4-ABI build, add the other three binaries as described in [android/JNILIBS.md](android/JNILIBS.md) and run `gradle assembleRelease -Pabi=arm64-v8a,armeabi-v7a,x86,x86_64`.
@@ -212,7 +226,7 @@ Signing passwords are **not** in the repo. Copy `android/keystore.properties.exa
 ## Gotchas (things that break if you change them)
 
 1. **`libffmpeg.so` is an executable, not a real shared library.** The `.so` name only exists so Gradle packages it into `lib/<abi>/`.
-2. **`useLegacyPackaging = true` plus `android:extractNativeLibs="true"` must stay.** Since API 29, Android forbids executing files in the data directory; `nativeLibraryDir` is the only legal place. Turn these off and the binary is never extracted as a real file, so the app reports "no bundled ffmpeg" on launch.
+2. **`useLegacyPackaging = true` must stay.** Since API 29, Android forbids executing files in the data directory; `nativeLibraryDir` is the only legal place. Turn it off and the binary is never extracted as a real file, so the app reports "no bundled ffmpeg" on launch. (1.1.0 drops the hand-written `extractNativeLibs` attribute: AGP writes it back itself, and declaring both only causes a conflict warning.)
 3. **Don't add ABIs you don't ship binaries for** — it only makes the APK bigger and still won't run.
 4. **Don't add the `INTERNET` permission.** "Fully offline" lives on that line.
 5. **Never commit `keystore.properties` or a `.jks`.**
@@ -228,6 +242,10 @@ Bugs fixed along the way (all in the current code):
 | Hard failure when the target folder became unwritable | no fallback | catch and fall back to `Download/` |
 | Audio written into an `.mp4` extension | extension followed the source container | pick the container from the actual codec |
 | Audio stream `-ss` landed 30 ms early | argument order | move `-ss`, cuts are now exact |
+| "Quick cut" always failed on mkv with subtitles, opus audio or wav | hard-coded `-map 0` plus a fixed `.mp4` output | map only the first video/audio stream, keep the source container |
+| `1:70` silently became 130 seconds | the parser never validated each part's range | reject it instead of guessing |
+| Buttons stayed on cooldown after a failed job | the cooldown ignored the outcome | only a successful job starts the cooldown |
+| Long jobs were killed after backgrounding | no foreground service | `dataSync` foreground service with a progress notification |
 
 ---
 
@@ -236,7 +254,7 @@ Bugs fixed along the way (all in the current code):
 - This repo builds **arm64-v8a** by default; 32-bit devices need the full APK from Releases.
 - The bundled ffmpeg is 3.3.2 (built 2018) — that's the trade-off for a sane APK size. AV1/VVC are out of scope; H.264, H.265, AAC, MP3, FLAC, Vorbis and Opus are covered.
 - Quick cut follows keyframes, so the cut point snaps; use precise cut when it must be exact.
-- No foreground service: for very long files keep the app in the foreground (it warns you and keeps the screen on); backgrounding it for a long time may let the system kill the process.
+- Long jobs run in a `dataSync` foreground service, so backgrounding is fine while the progress notification is still there. Aggressive battery optimisation can still kill it; for very long files, don't swipe the app out of Recents.
 
 ---
 

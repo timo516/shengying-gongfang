@@ -8,7 +8,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Callable, Optional, Tuple
+from typing import Callable, List, Optional, Tuple
 
 from . import config
 from . import ffmpeg_tool as ft
@@ -49,16 +49,13 @@ def build_args(
     bitrate: str = config.DEFAULT_MP3_BITRATE,
     start: float = 0.0,
     end: Optional[float] = None,
-) -> Tuple[list, bool]:
-    """拼出 ffmpeg 参数，并返回是否走了无损 copy。"""
-    src_codec = ""
-    try:
-        info = probe(src)
-        if info.audio:
-            src_codec = info.audio[0].codec
-    except Exception:
-        pass
+    src_codec: str = "",
+) -> Tuple[List[str], bool]:
+    """拼出 ffmpeg 参数，并返回是否走了无损 copy。
 
+    src_codec 由调用方传入（它已经 probe 过了）。以前这里自己又 probe 一次，
+    同一文件跑两遍 ffprobe，批量处理时纯属浪费。
+    """
     lossless = fmt in _COPY_OK and src_codec in _COPY_OK.get(fmt, set())
 
     args = [ft.ffmpeg(), "-hide_banner", "-y"]
@@ -122,7 +119,7 @@ def extract_audio(
     if not overwrite:
         dst = unique_path(dst)
 
-    args, lossless = build_args(src, dst, fmt, bitrate, s, e)
+    args, lossless = build_args(src, dst, fmt, bitrate, s, e, src_codec)
 
     total = (e - s) if e is not None else ((info.duration - s) if info.duration else 0)
     if on_progress:

@@ -4,7 +4,8 @@
 
 | Version | Supported |
 |---|---|
-| 1.0.3 and later | ✅ |
+| 1.1.0 and later | ✅ |
+| 1.0.3 | ⚠️ upgrade recommended — 1.1.0 fixes a crash-on-finish (`BadTokenException`), a locale bug that broke clipping on comma-decimal devices, and a long-job path that could be killed in the background |
 | 1.0.2 and earlier | ❌ (please upgrade; note the signing-key change means an uninstall is required once) |
 
 ## Scope

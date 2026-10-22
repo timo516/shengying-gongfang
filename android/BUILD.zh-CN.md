@@ -32,11 +32,12 @@ echo "sdk.dir=/你的/Android/Sdk" > local.properties    # 或改用 ANDROID_HOM
 
 gradle assembleDebug          # 产物 app/build/outputs/apk/debug/
 gradle assembleRelease        # 产物 app/build/outputs/apk/release/（需配签名，见第 5 节）
+gradle testDebugUnitTest      # JVM 单测（31 项），不需要设备
 ```
 
 也可以直接用 Android Studio 打开 `android/` 目录（**不是仓库根目录**），`Build → Build APK(s)`。
 
-**ABI** 默认只有 `arm64-v8a`（仓库只带了这一份 `libffmpeg.so`）。想打全量包，先按 [JNILIBS.zh-CN.txt](JNILIBS.zh-CN.txt) 补齐其余三个 ABI 的二进制，再：
+**ABI** 默认只有 `arm64-v8a`（仓库只带了这一份 `libffmpeg.so`）。想打全量包，先按 [JNILIBS.md](JNILIBS.md) 补齐其余三个 ABI 的二进制，再：
 
 ```bash
 gradle assembleRelease -Pabi=arm64-v8a,armeabi-v7a,x86,x86_64
@@ -49,8 +50,9 @@ gradle assembleRelease -Pabi=arm64-v8a,armeabi-v7a,x86,x86_64
 1. **`jniLibs/arm64-v8a/libffmpeg.so` 必须原样保留。**
    ① 必须在 `jniLibs/<abi>/` 下；② 必须是 `lib*.so` 命名（Gradle 只把这个模式当 native 库打包）；③ 内容其实是 ffmpeg **可执行文件**，不是真 `.so`——这是故意的。
 
-2. **`packaging { jniLibs { useLegacyPackaging = true } }` 和 `android:extractNativeLibs="true"` 不能关。**
-   Android 从 API 29 起禁止执行 data 目录里的文件，`nativeLibraryDir` 是唯一合法执行位置。关了这两项，二进制不会被解压成真实文件，App 启动就报「找不到内置 ffmpeg」。
+2. **`packaging { jniLibs { useLegacyPackaging = true } }` 不能关。**
+   Android 从 API 29 起禁止执行 data 目录里的文件，`nativeLibraryDir` 是唯一合法执行位置。关了它，二进制不会被解压成真实文件，App 启动就报「找不到内置 ffmpeg」。
+   （1.1.0 起 manifest 里手写的 `extractNativeLibs` 删掉了：AGP 会按 `useLegacyPackaging` 自动补回，两边都写只会多一条冲突警告。）
 
 3. **`abiFilters` 别乱加。** 没放对应二进制却声明了 ABI，只会让包变大、装上还跑不起来。
 
@@ -72,6 +74,15 @@ gradle assembleRelease -Pabi=arm64-v8a,armeabi-v7a,x86,x86_64
 | 同上点精确剪 | 片段时长为 5.000 秒 |
 | 点「编辑音频」 | 波形出现，能拖动选区、标记删除、试听、导出 |
 | 飞行模式下重跑上面任意一步 | 全部正常 → 离线验证通过 |
+
+### 不开手机的回归
+
+```bash
+./tools/make-fixtures.sh                       # 造 6 个样本（本机需要 ffmpeg）
+./tools/smoke.sh "$(command -v ffmpeg)"        # 13 项断言，全部使用 App 里同一套参数
+```
+
+其中 3 项是**必须失败**的负向对照：`-map 0` 把字幕轨塞进 mp4、opus 写进 m4a、wav 写进 mp4。这三条一旦「通过」了，说明 App 的参数又退回了 1.0.3 的写法。
 
 ---
 

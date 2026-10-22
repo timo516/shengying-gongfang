@@ -9,11 +9,11 @@ from __future__ import annotations
 import os
 import shutil
 import subprocess
-import sys
+import threading
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Callable, List, Optional
 
-from .utils import human_size, parse_time
+from .utils import parse_time
 
 # Windows 下不想弹黑框
 _NO_WINDOW = 0x08000000 if os.name == "nt" else 0
@@ -29,7 +29,16 @@ _CANDIDATES = [
 
 
 class FFmpegError(RuntimeError):
-    """ffmpeg 执行失败，message 里带 stderr 末尾若干行方便定位。"""
+    """ffmpeg 执行失败。
+
+    message 里只放 stderr 末尾若干行（够人看、不刷屏），**完整输出**放在 .output。
+    原因：media_info 的 "ffmpeg -i" 兜底解析要的是开头那几行（Duration / Stream），
+    而末尾那几行里根本没有 —— 只留 12 行时，多音轨文件永远解析不出时长。
+    """
+
+    def __init__(self, message: str, output: str = ""):
+        super().__init__(message)
+        self.output = output
 
 
 _ff: Optional[str] = None
@@ -86,9 +95,12 @@ def _decode(b: bytes) -> str:
 
 
 def run(args, timeout: Optional[float] = None, quiet: bool = True) -> str:
-    """同步执行 ffmpeg/ffprobe，返回 stdout+stderr 文本；失败抛 FFmpegError。"""
+    """同步执行 ffmpeg/ffprobe，返回 stdout+stderr 文本；失败抛 FFmpegError。
+
+    失败时异常对象带 .output（完整输出），需要解析全文的调用方用它。
+    """
     exe = args[0]
-    cmd = [exe if os.path.isabs(exe) else exe] + list(args[1:])
+    cmd = [exe] + list(args[1:])
     try:
         proc = subprocess.run(
             cmd,
@@ -100,12 +112,12 @@ def run(args, timeout: Optional[float] = None, quiet: bool = True) -> str:
     except FileNotFoundError as e:
         raise FFmpegError(f"无法启动 {exe}：{e}") from e
     except subprocess.TimeoutExpired as e:
-        raise FFmpegError("执行超时") from e
+        raise FFmpegError(f"执行超时（{timeout}s）") from e
 
     out = _decode(proc.stdout) + _decode(proc.stderr)
     if proc.returncode != 0:
         tail = "\n".join(out.strip().splitlines()[-12:])
-        raise FFmpegError(f"命令失败(exit {proc.returncode})：\n{tail}")
+        raise FFmpegError(f"命令失败(exit {proc.returncode})：\n{tail}", output=out)
     if not quiet:
         print(out)
     return out
@@ -116,11 +128,15 @@ def run_with_progress(
     total_seconds: float,
     on_progress: Optional[Callable[[float, float], None]] = None,
     cwd: Optional[str] = None,
+    timeout: Optional[float] = None,
 ) -> None:
     """执行 ffmpeg 并实时回报进度。
 
     on_progress(已处理秒数, 总秒数) 会被反复调用，总秒数未知时传 0。
     靠 ffmpeg 的 -progress pipe:1 输出解析，比去正则 stderr 靠谱得多。
+
+    stderr 用独立线程收：stdout/stderr 两条 PIPE 只读一条时，
+    另一条写满 64KB 后 ffmpeg 卡在写上、Python 卡在读上 —— 双向死锁。
     """
     exe = args[0]
     cmd = [exe] + list(args[1:]) + ["-progress", "pipe:1", "-nostats", "-loglevel", "error"]
@@ -137,6 +153,20 @@ def run_with_progress(
         creationflags=_NO_WINDOW,
     )
 
+    err_chunks: List[str] = []
+
+    def _drain_stderr() -> None:
+        try:
+            if proc.stderr is None:
+                return
+            for line in proc.stderr:
+                err_chunks.append(line)
+        except Exception:  # noqa: BLE001 —— 收尾线程，任何异常都不该炸出去
+            pass
+
+    drainer = threading.Thread(target=_drain_stderr, daemon=True)
+    drainer.start()
+
     try:
         assert proc.stdout is not None
         for line in proc.stdout:
@@ -152,13 +182,18 @@ def run_with_progress(
                 if on_progress:
                     on_progress(total_seconds, total_seconds)
     finally:
-        # Popen 用了 text=True，read() 回来已经是 str，别再 decode
-        stderr_text = proc.stderr.read() if proc.stderr else ""
-        proc.wait()
+        try:
+            proc.wait(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.wait()
+            err_chunks.append(f"（超时 {timeout}s，已强制结束）")
+        drainer.join(1)
 
+    stderr_text = "".join(err_chunks)
     if proc.returncode != 0:
         tail = "\n".join(stderr_text.strip().splitlines()[-12:])
-        raise FFmpegError(f"命令失败(exit {proc.returncode})：\n{tail}")
+        raise FFmpegError(f"命令失败(exit {proc.returncode})：\n{tail}", output=stderr_text)
 
 
 def make_bar(done: float, total: float, width: int = 28) -> str:

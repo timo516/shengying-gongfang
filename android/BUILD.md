@@ -32,6 +32,7 @@ echo "sdk.dir=/path/to/Android/Sdk" > local.properties    # or set ANDROID_HOME
 
 gradle assembleDebug          # output: app/build/outputs/apk/debug/
 gradle assembleRelease        # output: app/build/outputs/apk/release/ (needs signing, see §5)
+gradle testDebugUnitTest      # 31 JVM unit tests, no device needed
 ```
 
 You can also open `android/` in Android Studio (**not** the repo root) and use `Build → Build APK(s)`.
@@ -49,8 +50,9 @@ gradle assembleRelease -Pabi=arm64-v8a,armeabi-v7a,x86,x86_64
 1. **Keep `jniLibs/arm64-v8a/libffmpeg.so` exactly as is.**
    It must live under `jniLibs/<abi>/`; it must be named `lib*.so` (Gradle only packages that pattern as a native library); and its content is actually an ffmpeg **executable**, not a real shared object — that's intentional.
 
-2. **`packaging { jniLibs { useLegacyPackaging = true } }` and `android:extractNativeLibs="true"` must stay.**
-   Since API 29 Android forbids executing files in the data directory; `nativeLibraryDir` is the only legal location. Turn these off and the binary is never extracted as a real file, so the app reports "no bundled ffmpeg" on startup.
+2. **`packaging { jniLibs { useLegacyPackaging = true } }` must stay.**
+   Since API 29 Android forbids executing files in the data directory; `nativeLibraryDir` is the only legal location. Turn it off and the binary is never extracted as a real file, so the app reports "no bundled ffmpeg" on startup.
+   (1.1.0 removed the hand-written `extractNativeLibs` from the manifest: AGP writes it back itself, and declaring both only adds a merge-conflict warning.)
 
 3. **Don't declare ABIs you don't ship.** It only bloats the APK and still won't run.
 
@@ -72,6 +74,15 @@ gradle assembleRelease -Pabi=arm64-v8a,armeabi-v7a,x86,x86_64
 | Same with precise cut | Clip is exactly 5.000 s |
 | Tap "编辑音频" | Waveform appears; selection, delete marks, audition and export all work |
 | Rerun any of the above in airplane mode | Everything still works → offline verified |
+
+### Regression without a phone
+
+```bash
+./tools/make-fixtures.sh                       # build 6 fixtures (needs a local ffmpeg)
+./tools/smoke.sh "$(command -v ffmpeg)"        # 13 assertions, same argv the app uses
+```
+
+Three of them are **negative controls that must fail**: `-map 0` pushing a subtitle track into mp4, opus into m4a, wav into mp4. If any of those starts "passing", the app's arguments have regressed to the 1.0.3 shape.
 
 ---
 

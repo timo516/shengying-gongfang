@@ -32,3 +32,6 @@ Thumbs.db
 __pycache__/
 *.py[cod]
 output/
+
+# 测试素材（tools/make-fixtures.sh 生成）
+tools/fixtures/

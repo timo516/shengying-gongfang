@@ -7,7 +7,7 @@
 本地跑的小工具：从视频里抽音频、按时间剪片段、整目录批量抽。
 **无广告、不联网、不上传、不登录**，所有处理都在你手机上（或电脑上）用 ffmpeg 本地完成。
 
-- 纯 Python 标准库 + 系统里的 ffmpeg，没有任何 pip 依赖
+- 纯 Python 标准库 + 系统里的 ffmpeg，不需要装任何第三方包（想装成命令也行：`pip install -e .`）
 - 默认「能无损就无损」：音轨编码对得上就直接 `-c:a copy`，字节级搬运，音质一点不掉
 
 ---
@@ -85,7 +85,7 @@ python3 -m mediakit.cli clip 视频.mp4 --start 0:10 --end 0:40 --audio
 python3 -m mediakit.cli batch /sdcard/Movies -o /sdcard/Download/音频 -f m4a
 ```
 
-输出默认丢在项目里的 `output/` 目录，同名文件不覆盖，会自动变成 `xxx (1).m4a`。
+输出默认丢在 `~/mediakit-output/`（Windows 下是 `%USERPROFILE%\mediakit-output`），同名文件不覆盖，会自动变成 `xxx (1).m4a`。
 想改默认输出目录，设环境变量 `MEDIAKIT_OUT` 就行。
 
 ---
@@ -129,11 +129,12 @@ python3 -m mediakit.cli batch /sdcard/Movies -o /sdcard/Download/音频 -f m4a
 ## 六、目录结构
 
 ```
-mediakit/
+python/
 ├── main.py                 交互式入口（菜单）
 ├── README.md               本文件
 ├── run.sh                  一键启动脚本
-├── output/                 默认输出目录（自动创建）
+├── pyproject.toml          可选：pip install -e . 装成 mediakit 命令
+├── tests/                  unittest（22 项）
 └── mediakit/
     ├── __init__.py         版本号、对外导出
     ├── utils.py            时间解析、文件大小、文件名清洗、防重名
@@ -147,6 +148,12 @@ mediakit/
 ```
 
 想改默认行为（默认格式、码率、copy 开关、输出目录），改 `mediakit/config.py` 就行，不用动功能代码。
+
+自测（不依赖 ffmpeg、不需要任何设备）：
+
+```bash
+python3 -m unittest discover -s tests -v
+```
 
 ---
 

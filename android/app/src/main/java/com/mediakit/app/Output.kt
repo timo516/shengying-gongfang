@@ -68,7 +68,18 @@ object Output {
             }
             throw t
         }
-        return "Download/$displayName"
+        // MediaStore 遇到重名会自动改名（xxx (1).m4a），以它回的为准，
+        // 否则界面上给用户看的是一个不存在的路径
+        val real = queryDisplayName(ctx, uri) ?: displayName
+        return "Download/$real"
+    }
+
+    private fun queryDisplayName(ctx: Context, uri: Uri): String? = try {
+        ctx.contentResolver
+            .query(uri, arrayOf(MediaStore.MediaColumns.DISPLAY_NAME), null, null, null)
+            ?.use { c -> if (c.moveToFirst()) c.getString(0) else null }
+    } catch (_: Throwable) {
+        null
     }
 
     /** Android 9 及以下：直接写公共 Download 目录 */
@@ -108,6 +119,8 @@ object Output {
 
     /** 保存成功后的引导：带一个「查看」按钮，点了直接进文件管理器的 Download 目录 */
     fun promptSaved(activity: Activity, savedPath: String) {
+        // 任务跑完时页面可能已经被用户按返回关掉了，这时候 show() 就是 BadTokenException
+        if (activity.isFinishing || activity.isDestroyed) return
         val name = savedPath.substringAfterLast('/')
         AlertDialog.Builder(activity)
             .setTitle("✅ 已保存")

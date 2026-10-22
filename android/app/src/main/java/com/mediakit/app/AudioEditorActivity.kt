@@ -1,6 +1,5 @@
 package com.mediakit.app
 
-import android.app.Activity
 import android.content.Intent
 import android.graphics.Typeface
 import android.media.MediaPlayer
@@ -8,21 +7,17 @@ import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.provider.OpenableColumns
 import android.view.Gravity
 import android.view.View
-import android.view.ViewGroup
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.ScrollView
 import android.widget.TextView
-import android.widget.Toast
 import java.io.BufferedInputStream
 import java.io.DataInputStream
 import java.io.File
 import java.io.FileInputStream
-import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.sqrt
 
@@ -36,18 +31,15 @@ import kotlin.math.sqrt
  * 引擎还是内置的 ffmpeg：删除多段就是用 atrim 把保留段切出来再 concat 拼上，
  * 音频重编码比视频快得多，几分钟的素材通常几秒到十几秒。
  */
-class AudioEditorActivity : Activity() {
+class AudioEditorActivity : BaseActivity() {
 
     companion object {
         const val EXTRA_URI = "extra_uri"
         private const val REQ_PICK = 2001
-
-        /** 波形采样桶数 */
-        private const val BUCKETS = 1600
-
-        /** 选区最短 300ms，太短了手柄会叠在一起 */
-        private const val MIN_SEL_MS = 300L
     }
+
+    /** 两列排布，按钮字号比主页小一号 */
+    override val buttonTextSize: Float = 13f
 
     private var srcFile: File? = null
     private var durationMs = 0L
@@ -69,22 +61,29 @@ class AudioEditorActivity : Activity() {
     private lateinit var playBtn: Button
     private lateinit var progress: ProgressBar
     private lateinit var progressText: TextView
-    private val actionButtons = ArrayList<Button>()
 
     private var player: MediaPlayer? = null
     private val handler = Handler(Looper.getMainLooper())
+    private var lastPct = -1
+    private var lastPlayLabel = ""
+
     private val ticker = object : Runnable {
         override fun run() {
             val p = player
             if (p != null) {
                 val pos = try {
                     p.currentPosition.toLong()
-                } catch (t: Throwable) {
+                } catch (_: Throwable) {
                     0L
                 }
                 wave.playheadMs = pos
                 if (previewing && pos >= previewEndMs) stopPreview()
-                playBtn.text = if (previewing) "■ 试听中" else if (isPlaying(p)) "⏸ 暂停" else "▶ 播放"
+                val label = if (previewing) "■ 试听中" else if (isPlaying(p)) "⏸ 暂停" else "▶ 播放"
+                // 80ms 一次，只在文案真的变了才写，省掉无意义的重绘
+                if (label != lastPlayLabel) {
+                    playBtn.text = label
+                    lastPlayLabel = label
+                }
                 handler.postDelayed(this, 80)
             }
         }
@@ -92,7 +91,7 @@ class AudioEditorActivity : Activity() {
 
     private fun isPlaying(p: MediaPlayer): Boolean = try {
         p.isPlaying
-    } catch (t: Throwable) {
+    } catch (_: Throwable) {
         false
     }
 
@@ -117,11 +116,11 @@ class AudioEditorActivity : Activity() {
         super.onDestroy()
         handler.removeCallbacks(ticker)
         releasePlayer()
+        // 临时文件放 cacheDir，正常退出就清掉；任务还在跑的时候别动（正在读它）
+        if (!busy) Storage.clearWorkDir(this)
     }
 
     // ---------------- UI ----------------
-
-    private fun dp(v: Int): Int = (v * resources.displayMetrics.density).toInt()
 
     private fun buildUi(): View {
         val col = LinearLayout(this).apply {
@@ -158,7 +157,7 @@ class AudioEditorActivity : Activity() {
         col.addView(infoView, matchWrap())
 
         wave = WaveView(this)
-        val waveLp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(150))
+        val waveLp = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(150))
         waveLp.topMargin = dp(4)
         col.addView(wave, waveLp)
         wave.onSelectionChanged = { updateSelText() }
@@ -231,58 +230,10 @@ class AudioEditorActivity : Activity() {
         return ScrollView(this).apply { addView(col) }
     }
 
-    private fun sectionTitle(text: String) = TextView(this).apply {
-        this.text = text
-        textSize = 14f
-        setTypeface(typeface, Typeface.BOLD)
-        setTextColor(getColor(R.color.accent))
-        setPadding(0, dp(6), 0, 0)
-    }
-
-    private fun hint(text: String) = TextView(this).apply {
-        this.text = text
-        textSize = 12f
-        setTextColor(getColor(R.color.text_hint))
-        setPadding(dp(2), dp(8), dp(2), 0)
-        setLineSpacing(dp(2).toFloat(), 1f)
-    }
-
-    private fun actionButton(text: String, onClick: () -> Unit): Button {
-        val b = Button(this)
-        b.text = text
-        b.isAllCaps = false
-        b.textSize = 13f
-        b.setPadding(dp(6), 0, dp(6), 0)
-        b.minWidth = 0
-        b.minimumWidth = 0
-        b.setOnClickListener { onClick() }
-        actionButtons.add(b)
-        return b
-    }
-
-    private fun matchWrap(top: Int = 0) = LinearLayout.LayoutParams(
-        ViewGroup.LayoutParams.MATCH_PARENT,
-        ViewGroup.LayoutParams.WRAP_CONTENT
-    ).apply { topMargin = dp(top) }
-
-    private fun weight() = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
-        .apply {
-            rightMargin = dp(4)
-            leftMargin = dp(4)
-        }
-
-    private fun toast(msg: String) = Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
-
-    private fun setActionsEnabled(enabled: Boolean) {
-        for (b in actionButtons) b.isEnabled = enabled
-    }
-
     private fun showProgress(visible: Boolean) {
         progress.visibility = if (visible) View.VISIBLE else View.GONE
         progressText.visibility = if (visible) View.VISIBLE else View.GONE
     }
-
-    private var lastPct = -1
 
     private fun setProgress(p: Float, label: String? = null) {
         val pct = (p.coerceIn(0f, 1f) * 100).toInt()
@@ -321,7 +272,7 @@ class AudioEditorActivity : Activity() {
         }
     }
 
-    /** 复制到私有工作目录；是视频就先抽音轨 */
+    /** 复制到私有缓存目录；是视频就先抽音轨 */
     private fun importUri(u: Uri) {
         if (busy) {
             toast("正在处理，稍等")
@@ -334,8 +285,8 @@ class AudioEditorActivity : Activity() {
         showProgress(true)
         setProgress(0f, "读取文件…")
         if (longTask) {
-            LongTask.start(this)
-            statusView.text = "准备中…（请保持本页在前台）"
+            LongTask.start(this, "导入素材")
+            statusView.text = "准备中…（长任务，切后台也不会中断）"
         } else {
             statusView.text = "准备中…"
         }
@@ -351,6 +302,7 @@ class AudioEditorActivity : Activity() {
             runOnUiThread {
                 busy = false
                 LongTask.stop(this@AudioEditorActivity)
+                if (!uiAlive()) return@runOnUiThread
                 if (file == null) {
                     setActionsEnabled(true)
                     showProgress(false)
@@ -360,7 +312,7 @@ class AudioEditorActivity : Activity() {
                 statusView.text = "就绪，拖手柄选范围"
                 showProgress(false)
                 setActionsEnabled(true)
-                infoView.text = "文件  ${file.name}\n时长  ${fmtDur(durationMs)}" +
+                infoView.text = "文件  ${file.name}\n时长  ${Fmt.dur(durationMs)}" +
                     if (deleted.isEmpty()) "" else "\n已标记删除 ${deleted.size} 段"
                 updateSelText()
                 updateDelText()
@@ -370,14 +322,15 @@ class AudioEditorActivity : Activity() {
 
     /** @return (音频文件, 错误信息) */
     private fun prepareSource(u: Uri): Pair<File?, String?> {
-        val work = File(filesDir, "audio_work")
-        if (!work.exists() && !work.mkdirs()) return null to "无法创建临时目录"
+        val work = Storage.workDir(this)
         work.listFiles()?.forEach { it.delete() }
 
         val name = displayName(u)
-        val ext = name.substringAfterLast('.', "").lowercase(Locale.US).ifEmpty { "bin" }
+        val ext = Names.ext(name).ifEmpty { "bin" }
 
         setProgress(0f, "复制文件…")
+        // 内部存储就这么大，先看一眼再复制，别写成半截才报 ENOSPC
+        Storage.requireFree(work, sizeOf(u))
         val raw = File(work, "input.$ext")
         contentResolver.openInputStream(u)?.use { input ->
             raw.outputStream().use { out -> input.copyTo(out) }
@@ -385,30 +338,23 @@ class AudioEditorActivity : Activity() {
 
         val info = try {
             MediaInfo.probe(this, u)
-        } catch (t: Throwable) {
+        } catch (_: Throwable) {
             null
         }
-        val videoExt = setOf("mp4", "mkv", "mov", "m4v", "avi", "webm", "flv", "ts", "3gp", "wmv")
-        val maybeVideo = info?.hasVideo == true || (info == null && ext in videoExt)
+        val maybeVideo = info?.hasVideo == true || (info == null && FfmpegArgs.isVideoExt(ext))
 
         val audio: File
         if (maybeVideo) {
             setProgress(0f, "抽音轨…")
             val a = File(work, "audio.m4a")
-            var err = Ffmpeg.run(
-                this,
-                listOf("-y", "-i", raw.absolutePath, "-vn", "-c:a", "copy", a.absolutePath),
-                0L
-            ) { setProgress(it * 0.5f, "抽音轨…") }
+            var err = Ffmpeg.run(this, FfmpegArgs.extractCopy(raw.absolutePath, a.absolutePath), 0L) {
+                setProgress(it * 0.5f, "抽音轨…")
+            }
             if (err != null || !a.exists() || a.length() == 0L) {
                 a.delete()
                 err = Ffmpeg.run(
                     this,
-                    listOf(
-                        "-y", "-i", raw.absolutePath, "-vn",
-                        "-c:a", "aac", "-b:a", "192k", "-strict", "-2",
-                        a.absolutePath
-                    ),
+                    FfmpegArgs.extractEncode(raw.absolutePath, a.absolutePath, "m4a"),
                     0L
                 ) { setProgress(it * 0.5f, "转码音轨…") }
                 if (err != null) return null to "抽音轨失败：$err"
@@ -420,7 +366,10 @@ class AudioEditorActivity : Activity() {
         }
 
         setProgress(0.5f, "分析波形…")
-        val peaks = buildPeaks(audio) { setProgress(0.5f + it * 0.45f, "分析波形…") }
+        // 把已知时长传进去：既能给出真实进度，也让看门狗按素材长度缩放
+        // （传 0 时进度永远不回调、超时固定 5 分钟，长素材必挂）
+        val totalUs = (info?.durationMs ?: 0L) * 1000L
+        val peaks = buildPeaks(audio, totalUs) { setProgress(0.5f + it * 0.45f, "分析波形…") }
         durationMs = peaks.second
         if (durationMs <= 0L) return null to "解不出音频内容，这个文件可能没有音轨"
         if (peaks.first.isEmpty()) return null to "波形为空，文件可能损坏"
@@ -441,38 +390,35 @@ class AudioEditorActivity : Activity() {
     }
 
     /** 用 ffmpeg 解码成 8kHz 单声道 PCM 再算包络，快且省内存 */
-    private fun buildPeaks(src: File, onProgress: (Float) -> Unit): Pair<FloatArray, Long> {
+    private fun buildPeaks(src: File, totalUs: Long, onProgress: (Float) -> Unit): Pair<FloatArray, Long> {
         val raw = File(src.parentFile ?: cacheDir, "peaks.raw")
         if (raw.exists()) raw.delete()
         val err = Ffmpeg.run(
             this,
-            listOf(
-                "-y", "-i", src.absolutePath, "-vn",
-                "-ac", "1", "-ar", "8000", "-f", "s16le",
-                raw.absolutePath
-            ),
-            0L
+            FfmpegArgs.decodeToPcm(src.absolutePath, raw.absolutePath),
+            totalUs
         ) { onProgress(it) }
         if (err != null || !raw.exists() || raw.length() == 0L) {
             raw.delete()
             return FloatArray(0) to 0L
         }
         val samples = (raw.length() / 2).toInt()
-        val data = FloatArray(BUCKETS)
         if (samples <= 0) {
             raw.delete()
             return FloatArray(0) to 0L
         }
+        val data = FloatArray(Timeline.BUCKETS)
         try {
             DataInputStream(BufferedInputStream(FileInputStream(raw), 1 shl 16)).use { din ->
                 var i = 0
                 while (i < samples) {
                     val lo = din.read()
                     val hi = din.read()
-                    if (hi < 0) break
+                    if (hi < 0 || lo < 0) break
                     val v = ((hi shl 8) or lo).toShort().toInt()
                     val a = abs(v).toFloat() / 32768f
-                    val b = (i.toLong() * BUCKETS / samples).toInt().coerceIn(0, BUCKETS - 1)
+                    val b = (i.toLong() * Timeline.BUCKETS / samples).toInt()
+                        .coerceIn(0, Timeline.BUCKETS - 1)
                     if (a > data[b]) data[b] = a
                     i++
                 }
@@ -498,17 +444,17 @@ class AudioEditorActivity : Activity() {
                     setDataSource(f.absolutePath)
                     prepare()
                 }
-            } catch (t: Throwable) {
+            } catch (_: Throwable) {
                 null
             }
             runOnUiThread {
                 if (p == null) {
-                    statusView.text = "预览播放不可用，但剪辑导出不受影响"
-                } else {
-                    player = p
-                    handler.removeCallbacks(ticker)
-                    handler.post(ticker)
+                    if (uiAlive()) statusView.text = "预览播放不可用，但剪辑导出不受影响"
+                    return@runOnUiThread
                 }
+                player = p
+                handler.removeCallbacks(ticker)
+                handler.post(ticker)
             }
         }.start()
     }
@@ -551,7 +497,7 @@ class AudioEditorActivity : Activity() {
             toast("播放器还没准备好")
             return
         }
-        if (wave.selEndMs - wave.selStartMs < MIN_SEL_MS) {
+        if (wave.selEndMs - wave.selStartMs < Timeline.MIN_SEL_MS) {
             toast("选区太短了")
             return
         }
@@ -576,13 +522,13 @@ class AudioEditorActivity : Activity() {
     // ---------------- 选区 / 删除标记 ----------------
 
     private fun setStartAtPlayhead() {
-        val maxStart = (wave.selEndMs - MIN_SEL_MS).coerceAtLeast(0L)
+        val maxStart = (wave.selEndMs - Timeline.MIN_SEL_MS).coerceAtLeast(0L)
         wave.selStartMs = wave.playheadMs.coerceIn(0L, maxStart)
         updateSelText()
     }
 
     private fun setEndAtPlayhead() {
-        val minEnd = (wave.selStartMs + MIN_SEL_MS).coerceAtMost(durationMs)
+        val minEnd = (wave.selStartMs + Timeline.MIN_SEL_MS).coerceAtMost(durationMs)
         wave.selEndMs = wave.playheadMs.coerceIn(minEnd, durationMs)
         updateSelText()
     }
@@ -590,7 +536,7 @@ class AudioEditorActivity : Activity() {
     private fun updateSelText() {
         val s = wave.selStartMs
         val e = wave.selEndMs
-        selView.text = "选区  ${fmt(s)} → ${fmt(e)}　共 ${fmtDur(e - s)}"
+        selView.text = "选区  ${Fmt.clock(s)} → ${Fmt.clock(e)}　共 ${Fmt.dur(e - s)}"
     }
 
     private fun markDeleteSelection() {
@@ -600,16 +546,13 @@ class AudioEditorActivity : Activity() {
         }
         val s = wave.selStartMs
         val e = wave.selEndMs
-        if (e - s < MIN_SEL_MS) {
+        if (e - s < Timeline.MIN_SEL_MS) {
             toast("选区太短了")
             return
         }
         addDeleted(s, e)
-        if (deleted.size == 1 && deleted[0].first <= 0L && deleted[0].last >= durationMs) {
-            statusView.text = "整段都标记删除了，撤销一下"
-        } else {
-            statusView.text = "已标记删除，可继续选下一段"
-        }
+        val whole = deleted.size == 1 && deleted[0].first <= 0L && deleted[0].last >= durationMs
+        statusView.text = if (whole) "整段都标记删除了，撤销一下" else "已标记删除，可继续选下一段"
     }
 
     /** 只保留当前选区，其余全部标记删除 */
@@ -620,36 +563,24 @@ class AudioEditorActivity : Activity() {
         }
         val s = wave.selStartMs
         val e = wave.selEndMs
-        if (e - s < MIN_SEL_MS) {
+        if (e - s < Timeline.MIN_SEL_MS) {
             toast("选区太短了")
             return
         }
         deleted.clear()
         if (s > 0L) addDeleted(0L, s)
         if (e < durationMs) addDeleted(e, durationMs)
-        statusView.text = if (deleted.isEmpty()) "没裁掉任何东西（选区就是全片）" else "已裁成选区，点导出"
+        statusView.text =
+            if (deleted.isEmpty()) "没裁掉任何东西（选区就是全片）" else "已裁成选区，点导出"
     }
 
     private fun addDeleted(s0: Long, e0: Long) {
         val s = s0.coerceIn(0L, durationMs)
         val e = e0.coerceIn(0L, durationMs)
         if (e <= s) return
-        val all = ArrayList<LongRange>(deleted)
-        all.add(s..e)
-        all.sortBy { it.first }
-        val merged = ArrayList<LongRange>()
-        for (r in all) {
-            if (merged.isEmpty()) {
-                merged.add(r)
-                continue
-            }
-            val last = merged[merged.size - 1]
-            if (r.first <= last.last) {
-                merged[merged.size - 1] = last.first..maxOf(last.last, r.last)
-            } else {
-                merged.add(r)
-            }
-        }
+        // 注意别写成 deleted + (s..e)：LongRange 本身是 Iterable<Long>，
+        // 会被推到 plus(elements: Iterable<Any>) 上去，结果变成 List<Any>
+        val merged = Timeline.merge(deleted.toList() + listOf(s..e))
         deleted.clear()
         deleted.addAll(merged)
         wave.deleted = ArrayList(deleted)
@@ -675,18 +606,7 @@ class AudioEditorActivity : Activity() {
         statusView.text = "删除标记已清空"
     }
 
-    private fun keptSegments(): List<LongRange> {
-        if (durationMs <= 0L) return emptyList()
-        if (deleted.isEmpty()) return listOf(0L..durationMs)
-        val kept = ArrayList<LongRange>()
-        var cur = 0L
-        for (r in deleted.sortedBy { it.first }) {
-            if (r.first > cur) kept.add(cur..r.first)
-            cur = maxOf(cur, r.last)
-        }
-        if (cur < durationMs) kept.add(cur..durationMs)
-        return kept.filter { it.last - it.first >= 50L }
-    }
+    private fun keptSegments(): List<LongRange> = Timeline.kept(deleted, durationMs)
 
     private fun updateDelText() {
         if (durationMs <= 0L) return
@@ -695,10 +615,8 @@ class AudioEditorActivity : Activity() {
             return
         }
         val kept = keptSegments()
-        val delMs = deleted.sumOf { it.last - it.first }
-        val keptMs = kept.sumOf { it.last - it.first }
-        delView.text = "已标记删除 ${deleted.size} 段（共 ${fmtDur(delMs)}）\n" +
-            "导出后剩 ${kept.size} 段，共 ${fmtDur(keptMs)}"
+        delView.text = "已标记删除 ${deleted.size} 段（共 ${Fmt.dur(Timeline.total(deleted))}）\n" +
+            "导出后剩 ${kept.size} 段，共 ${Fmt.dur(Timeline.total(kept))}"
     }
 
     // ---------------- 导出 ----------------
@@ -723,8 +641,8 @@ class AudioEditorActivity : Activity() {
             toast("整段都被删掉了，没东西可导出")
             return
         }
-        val totalMs = kept.sumOf { it.last - it.first }
-        // 长素材或多段拼接（filter_complex 重编码）都按长任务提醒
+        val totalMs = Timeline.total(kept)
+        // 长素材或多段拼接（filter_complex 重编码）都按长任务处理
         val longTask = LongTask.isLong(totalMs) || kept.size > 1
         busy = true
         setActionsEnabled(false)
@@ -732,7 +650,7 @@ class AudioEditorActivity : Activity() {
         lastPct = -1
         setProgress(0f, "准备导出…")
         statusView.text = if (deleted.isEmpty()) "导出整段…" else "拼接导出中…"
-        if (longTask) LongTask.start(this)
+        if (longTask) LongTask.start(this, "导出音频")
 
         Thread {
             val msg = try {
@@ -743,74 +661,35 @@ class AudioEditorActivity : Activity() {
             runOnUiThread {
                 busy = false
                 LongTask.stop(this@AudioEditorActivity)
+                if (!uiAlive()) return@runOnUiThread
                 setActionsEnabled(true)
                 showProgress(false)
                 statusView.text = msg
                 // 导出成功的出口弹「查看」目录引导
-                val saved = Output.takeLastSaved()
-                if (saved != null && msg.startsWith("✅")) Output.promptSaved(this@AudioEditorActivity, saved)
+                if (msg.startsWith("✅")) {
+                    val saved = Output.takeLastSaved()
+                    if (saved != null) Output.promptSaved(this@AudioEditorActivity, saved)
+                }
             }
         }.start()
     }
 
     private fun doExport(src: File, kept: List<LongRange>, totalMs: Long): String {
-        val ext = src.name.substringAfterLast('.', "").lowercase(Locale.US)
-        val codec = when (ext) {
-            "mp3" -> listOf("-c:a", "libmp3lame", "-b:a", "192k")
-            "flac" -> listOf("-c:a", "flac")
-            "wav" -> listOf("-c:a", "pcm_s16le")
-            else -> listOf("-c:a", "aac", "-b:a", "192k", "-strict", "-2")
-        }
+        val ext = Names.ext(src.name)
         val outExt = when (ext) {
-            "mp3" -> "mp3"
-            "flac" -> "flac"
-            "wav" -> "wav"
+            "mp3", "flac", "wav", "opus", "ogg" -> ext
             else -> "m4a"
         }
-        val mime = when (outExt) {
-            "mp3" -> "audio/mpeg"
-            "flac" -> "audio/flac"
-            "wav" -> "audio/wav"
-            else -> "audio/mp4"
-        }
 
-        val base = sanitizeBase(src.name)
-        val out = File(cacheDir, "${base}_剪辑.$outExt")
+        val out = File(cacheDir, "${Names.base(src.name)}_剪辑.$outExt")
         if (out.exists()) out.delete()
 
-        val args = ArrayList<String>()
-        args.add("-y")
-        if (kept.size == 1) {
+        val args = if (kept.size == 1) {
             val r = kept[0]
-            if (r.first > 0L) {
-                args.add("-ss")
-                args.add(sec(r.first))
-            }
-            args.add("-i")
-            args.add(src.absolutePath)
-            if (r.last < durationMs) {
-                args.add("-t")
-                args.add(sec(r.last - r.first))
-            }
+            FfmpegArgs.exportOne(src.absolutePath, out.absolutePath, r.first, r.last, durationMs, outExt)
         } else {
-            args.add("-i")
-            args.add(src.absolutePath)
-            val sb = StringBuilder()
-            kept.forEachIndexed { i, r ->
-                sb.append("[0:a]atrim=start=").append(sec(r.first))
-                    .append(":end=").append(sec(r.last))
-                    .append(",asetpts=PTS-STARTPTS[a").append(i).append("];")
-            }
-            kept.indices.forEach { sb.append("[a").append(it).append("]") }
-            sb.append("concat=n=").append(kept.size).append(":v=0:a=1[out]")
-            args.add("-filter_complex")
-            args.add(sb.toString())
-            args.add("-map")
-            args.add("[out]")
+            FfmpegArgs.exportConcat(src.absolutePath, out.absolutePath, kept, outExt)
         }
-        args.add("-vn")
-        args.addAll(codec)
-        args.add(out.absolutePath)
 
         val err = Ffmpeg.run(this, args, totalMs * 1000L) { setProgress(it * 0.9f, "导出中…") }
         if (err != null) throw IllegalStateException(err)
@@ -818,77 +697,9 @@ class AudioEditorActivity : Activity() {
 
         setProgress(0.95f, "保存中…")
         val size = out.length()
-        val saved = Output.publish(this, out, out.name, mime)
+        val saved = Output.publish(this, out, out.name, FfmpegArgs.mimeFor(outExt))
         out.delete()
         setProgress(1f, "100%")
-        return "✅ 已保存\n$saved\n大小 ${humanSize(size)}"
-    }
-
-    private fun sec(ms: Long): String = String.format(Locale.US, "%.3f", ms / 1000.0)
-
-    // ---------------- 杂项 ----------------
-
-    private fun sanitizeBase(name: String): String {
-        val noExt = if (name.contains('.')) name.substringBeforeLast('.') else name
-        val cleaned = noExt.replace(Regex("[\\\\/:*?\"<>|\\x00-\\x1f]"), "_").trim()
-        return (cleaned.ifEmpty { "音频" }).take(60)
-    }
-
-    /** 源文件大小（拿不到就返回 0，只影响长任务提示，不影响功能） */
-    private fun sizeOf(u: Uri): Long {
-        return try {
-            contentResolver.query(u, null, null, null, null)?.use { c ->
-                if (c.moveToFirst()) {
-                    val i = c.getColumnIndex(OpenableColumns.SIZE)
-                    if (i >= 0 && !c.isNull(i)) c.getLong(i) else 0L
-                } else 0L
-            } ?: 0L
-        } catch (_: Throwable) {
-            0L
-        }
-    }
-
-    private fun displayName(u: Uri): String {
-        var name = "未命名"
-        try {
-            contentResolver.query(u, null, null, null, null)?.use { c ->
-                if (c.moveToFirst()) {
-                    val idx = c.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-                    if (idx >= 0) {
-                        val v = c.getString(idx)
-                        if (!v.isNullOrBlank()) name = v
-                    }
-                }
-            }
-        } catch (_: Throwable) {
-        }
-        return name
-    }
-
-    /** 0:12.3 */
-    private fun fmt(ms: Long): String {
-        val t = ms.coerceAtLeast(0L)
-        val totalSec = t / 1000
-        val m = totalSec / 60
-        val s = totalSec % 60
-        val tenth = (t % 1000) / 100
-        return String.format(Locale.US, "%d:%02d.%d", m, s, tenth)
-    }
-
-    /** 12.3秒 / 1分05秒 */
-    private fun fmtDur(ms: Long): String {
-        val t = ms.coerceAtLeast(0L)
-        if (t < 60_000L) return String.format(Locale.US, "%.1f秒", t / 1000.0)
-        val totalSec = t / 1000
-        return String.format(Locale.US, "%d分%02d秒", totalSec / 60, totalSec % 60)
-    }
-
-    private fun humanSize(bytes: Long): String {
-        if (bytes < 1024) return "$bytes B"
-        val kb = bytes / 1024.0
-        if (kb < 1024) return String.format(Locale.US, "%.0f KB", kb)
-        val mb = kb / 1024.0
-        return if (mb < 1024) String.format(Locale.US, "%.1f MB", mb)
-        else String.format(Locale.US, "%.2f GB", mb / 1024.0)
+        return "✅ 已保存\n$saved\n大小 ${Fmt.humanSize(size)}"
     }
 }

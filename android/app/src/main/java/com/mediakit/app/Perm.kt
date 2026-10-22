@@ -13,7 +13,8 @@ import android.os.Build
  * 否则 Output.publishLegacy 会直接抛 SecurityException。
  */
 object Perm {
-    private const val REQ_WRITE = 2001
+    /** 运行时权限的 requestCode，Activity 的 onRequestPermissionsResult 要用 */
+    const val REQ_WRITE = 2001
 
     fun ensureLegacyStorage(activity: Activity) {
         if (Build.VERSION.SDK_INT >= 29) return

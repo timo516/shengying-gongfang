@@ -21,10 +21,10 @@
 |---|---|
 | 应用名 | 声影工坊 |
 | 包名 | `com.mediakit.app` |
-| 版本 | 1.0.3（versionCode 5） |
+| 版本 | 1.1.0（versionCode 6） |
 | 最低系统 | Android 7.0（API 24） |
 | 目标系统 | Android 14（API 34） |
-| 语言 / 依赖 | Kotlin，纯系统控件；`dependencies {}` 为空，连 androidx 都不用 |
+| 语言 / 依赖 | Kotlin，纯系统控件；运行期 `dependencies {}` 为空（junit 只给单测用），连 androidx 都不用 |
 | 内置引擎 | ffmpeg 3.3.2 静态构建（libx264 / libmp3lame / libfdk-aac / libopus / libvorbis） |
 | 网络权限 | **无** |
 | 安装包 | 全量版 33.7 MB（4 ABI）／arm64 版 8.7 MB |
@@ -56,7 +56,7 @@
 | 输出 | 说明 |
 |---|---|
 | **m4a（无损）** | 源音轨是 AAC 时直接 `-c:a copy`，字节级搬运，几秒完成，音质零损失 |
-| mp3 192k / flac / wav / aac / opus / ogg | 需要时自动转码 |
+| mp3 192k / flac / wav | 需要时自动转码（libmp3lame / flac / pcm_s16le） |
 
 不会给你造"假 m4a"——源音轨不是 AAC 而你又选了 m4a，它会老老实实转成 AAC 再装进 m4a 容器。
 
@@ -92,7 +92,7 @@
 
 ### 6. 命令行版（Python）
 
-`python/` 目录下是同一套需求在电脑 / Termux 上的实现，纯标准库 + 系统 ffmpeg，没有 pip 依赖：
+`python/` 目录下是同一套需求在电脑 / Termux 上的实现，纯标准库 + 系统 ffmpeg，不装任何包就能跑（想装成命令也可以 `pip install -e python/`）：
 
 ```bash
 python3 main.py                      # 交互式菜单
@@ -112,12 +112,12 @@ python3 -m mediakit.cli batch /sdcard/Movies -f m4a
 
 | 文件 | ABI | 大小 | 适合谁 |
 |---|---|---|---|
-| `shengying-gongfang-1.0.3-arm64.apk` | arm64-v8a | 8.7 MB | 近几年几乎所有手机，**优先选这个** |
-| `shengying-gongfang-1.0.3-full.apk` | arm64-v8a / armeabi-v7a / x86 / x86_64 | 33.7 MB | 32 位老机型、模拟器、不确定架构时 |
+| `shengying-gongfang-1.1.0-arm64.apk` | arm64-v8a | 8.7 MB | 近几年几乎所有手机，**优先选这个** |
+| `shengying-gongfang-1.1.0-full.apk` | arm64-v8a / armeabi-v7a / x86 / x86_64 | 33.7 MB | 32 位老机型、模拟器、不确定架构时 |
 
 安装时系统会提示「未知来源应用」，允许即可；未上架任何应用商店。
 
-> **签名说明**：1.0.3 起换成正式签名（RSA 4096，有效期至 2056 年），与 1.0.0～1.0.2 的 debug 签名**不兼容**。如果你装过旧版，需要先卸载再装 1.0.3，否则会报「应用未安装 / 签名不一致」。之后各版本都能直接覆盖升级。
+> **签名说明**：1.0.3 起换成正式签名（RSA 4096，有效期至 2056 年），与 1.0.0～1.0.2 的 debug 签名**不兼容**。如果你装过旧版，需要先卸载再装 1.0.3，否则会报「应用未安装 / 签名不一致」。之后各版本都能直接覆盖升级，1.1.0 沿用同一张证书。
 
 ### 验证安装包
 
@@ -135,13 +135,13 @@ EF:4C:A4:77:06:01:7A:BE:4A:19:2C:11:52:7B:0C:7D:6C:B9:A2:B8:D6:70:A1:87:66:67:D2
 自己校验，装了 Android SDK 的话：
 
 ```bash
-apksigner verify --print-certs shengying-gongfang-1.0.3-arm64.apk
+apksigner verify --print-certs shengying-gongfang-1.1.0-arm64.apk
 ```
 
 只有 JDK 也行：
 
 ```bash
-keytool -printcert -jarfile shengying-gongfang-1.0.3-arm64.apk
+keytool -printcert -jarfile shengying-gongfang-1.1.0-arm64.apk
 ```
 
 输出里必须包含上面那串指纹；对不上就说明不是原版，别装。
@@ -150,8 +150,8 @@ keytool -printcert -jarfile shengying-gongfang-1.0.3-arm64.apk
 
 | 文件 | SHA-256 |
 |---|---|
-| `shengying-gongfang-1.0.3-arm64.apk` | `b52a5c17aff07b7477b048f1920cba52d406c0cc63b0c94acb2c3dd1ff4263e7` |
-| `shengying-gongfang-1.0.3-full.apk` | `5ff77c46a445d21bd1491c956c94f5b4380e97a7947d32a51fcae7f682357e9a` |
+| `shengying-gongfang-1.1.0-arm64.apk` | `ac2e38b1b49e4bd84db02b6bf99852851c61e8890040df90421d08929c84cd63` |
+| `shengying-gongfang-1.1.0-full.apk` | `b3ef52d3ec66b90d9d4c3c5b5db532c85d7eabd6661096898142bfd6093e251b` |
 
 手机上也能自查两步：
 
@@ -170,7 +170,7 @@ keytool -printcert -jarfile shengying-gongfang-1.0.3-arm64.apk
 │   ├── build.gradle            # AGP 8.5.2 / Kotlin 1.9.24
 │   ├── settings.gradle
 │   ├── gradle.properties
-│   ├── JNILIBS.zh-CN.txt       # 内置 ffmpeg 二进制的来源与替换方法
+│   ├── JNILIBS.md              # 内置 ffmpeg 二进制的来源、许可与替换方法
 │   └── app/
 │       ├── build.gradle
 │       └── src/main/
@@ -178,17 +178,30 @@ keytool -printcert -jarfile shengying-gongfang-1.0.3-arm64.apk
 │           ├── java/com/mediakit/app/
 │           │   ├── MainActivity.kt        # 单页主流程：选文件 → 看信息 → 抽音频 / 剪片段
 │           │   ├── AudioEditorActivity.kt # 波形剪辑器：选区 / 多段删除 / 拼接导出
+│           │   ├── BaseActivity.kt        # 公共控件构造 + 「界面还活着吗」
 │           │   ├── Ffmpeg.kt              # 定位并执行 libffmpeg.so，解析 -progress
+│           │   ├── FfmpegArgs.kt          # 纯函数：按容器 / 编码拼参数（有单测）
+│           │   ├── Fmt.kt                 # 时间解析与格式化（一律 Locale.US）
+│           │   ├── Timeline.kt            # 保留段合并、总时长、波形分桶（有单测）
+│           │   ├── Names.kt               # 文件名清洗与去重（有单测）
+│           │   ├── Storage.kt             # 空间检查、缓存工作目录
 │           │   ├── MediaInfo.kt           # 时长 / 分辨率 / 有无音轨
 │           │   ├── Output.kt              # 落盘、重名处理、跳转文件管理器
 │           │   ├── Perm.kt                # 存储权限
+│           │   ├── WorkService.kt         # 前台 Service（长任务不被回收）
 │           │   ├── LongTask.kt            # 长任务提醒 + 保持亮屏
 │           │   └── WaveView.kt            # 波形绘制
 │           ├── res/                       # 主题（含深色）、自适应图标
 │           └── jniLibs/arm64-v8a/libffmpeg.so   # 内置 ffmpeg（17 MB，别删别改名）
+├── tools/
+│   ├── make-fixtures.sh         # 生成回归样本（本机需要 ffmpeg）
+│   └── smoke.sh                 # 13 项命令行冒烟测试（含 3 项负向对照）
+├── .github/workflows/ci.yml     # CI：Python 单测 + Android 单测 + lint
 └── python/                     # 命令行 / 电脑版（纯标准库）
     ├── main.py
     ├── mediakit/               # info / extract / clip / batch / check
+    ├── tests/                  # unittest（22 项）
+    ├── pyproject.toml          # 可选：pip install -e . 装成命令
     └── README.md
 ```
 
@@ -202,6 +215,7 @@ keytool -printcert -jarfile shengying-gongfang-1.0.3-arm64.apk
 cd android
 echo "sdk.dir=/path/to/Android/Sdk" > local.properties   # 或用 ANDROID_HOME
 gradle assembleRelease            # 需要 JDK 17 + Gradle 8.7 + SDK 34
+gradle testDebugUnitTest          # JVM 单测：时间解析 / 参数拼装 / 保留段合并
 ```
 
 > 仓库里只带了 **arm64-v8a** 的 `libffmpeg.so`（17 MB，为了不让 clone 变得很痛苦）。想打全量四 ABI 包，按 [android/JNILIBS.zh-CN.txt](android/JNILIBS.zh-CN.txt) 补齐其余三份，再 `gradle assembleRelease -Pabi=arm64-v8a,armeabi-v7a,x86,x86_64`。
@@ -215,7 +229,7 @@ gradle assembleRelease            # 需要 JDK 17 + Gradle 8.7 + SDK 34
 这些是这个项目踩过的坑，写在这里免得后来者重踩：
 
 1. **`libffmpeg.so` 其实是可执行文件，不是真 `.so`。** 改名只是为了能被 Gradle 当 native 库打进 APK 的 `lib/` 下。
-2. **`useLegacyPackaging = true` + `android:extractNativeLibs="true"` 不能关。** Android 从 API 29 起禁止执行 data 目录里的文件，`nativeLibraryDir` 是唯一合法的可执行位置；关掉这两项，二进制不会被解压成真实文件，App 一启动就报「找不到 ffmpeg」。
+2. **`useLegacyPackaging = true` 不能关。** Android 从 API 29 起禁止执行 data 目录里的文件，`nativeLibraryDir` 是唯一合法的可执行位置；关掉它，二进制不会被解压成真实文件，App 一启动就报「找不到 ffmpeg」。（1.1.0 起 manifest 里手写的 `extractNativeLibs` 已删除：AGP 会按 `useLegacyPackaging` 自动写回，两边都写反而冲突。）
 3. **`abiFilters 'arm64-v8a'` 别删。** 包里没有别的 ABI 的二进制，多声明只是让包变大。
 4. **不要加 `INTERNET` 权限。** 「完全离线」这个卖点就写在这一行。
 5. **别把 `keystore.properties` / `.jks` 提交进仓库。**
@@ -231,6 +245,10 @@ gradle assembleRelease            # 需要 JDK 17 + Gradle 8.7 + SDK 34
 | 目标目录突然不可写就硬失败 | 没兜底 | 捕获后自动降级到 `Download/` |
 | 音频装进 `.mp4` 后缀 | 后缀按源容器写 | 按实际编码决定容器 |
 | 音频流 `-ss` 前置多出 0.03 秒 | 参数顺序 | 调整 `-ss` 位置，切口准确 |
+| 带字幕的 mkv / opus 音轨 / wav 源「快速剪」必定失败 | 固定 `-map 0` + 输出写死 `.mp4` | 只映射首条音视频轨，输出容器跟着源文件走 |
+| 输入 `1:70` 被悄悄当成 130 秒 | 时间解析不校验每段范围 | 越界直接判为非法，不替用户猜 |
+| 任务失败后按钮要空等冷却 | 冷却计时不看结果 | 只有成功才进冷却 |
+| 切后台做长任务被系统杀掉 | 没有前台 Service | `dataSync` 前台 Service + 通知栏进度 |
 
 ---
 
@@ -239,7 +257,7 @@ gradle assembleRelease            # 需要 JDK 17 + Gradle 8.7 + SDK 34
 - 本仓库默认只打 **arm64-v8a**；32 位设备请用 Release 里的 full 包（`armeabi-v7a` 也在里面）。
 - 内置 ffmpeg 是 3.3.2（2018 年构建），换来的是体积可控。AV1、VVC 这类新编码不在支持范围内；主流 H.264 / H.265 / AAC / MP3 / FLAC / Vorbis / Opus 都有。
 - 快速剪依赖关键帧，切口会吸附；要严格对时就选精确剪。
-- 没有做前台 Service：超长素材处理时请让 App 留在前台（App 会弹提示并保持屏幕常亮），切后台久了系统可能回收进程。
+- 长任务跑在 `dataSync` 前台 Service 里：切到后台只要通知栏还挂着进度通知，就不容易被系统回收；但电池优化太激进的机型仍可能动手，超长素材建议别手动划掉 App。
 
 ---
 

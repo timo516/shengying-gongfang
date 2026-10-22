@@ -1,34 +1,33 @@
 package com.mediakit.app
 
-import android.app.Activity
 import android.content.Intent
 import android.graphics.Typeface
 import android.net.Uri
 import android.os.Bundle
 import android.os.SystemClock
-import android.provider.OpenableColumns
 import android.text.InputType
 import android.view.Gravity
 import android.view.View
-import android.view.ViewGroup
-import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.ScrollView
 import android.widget.TextView
-import android.widget.Toast
 import java.io.File
 
 /**
  * 单页界面，全部用系统控件拼（不依赖 androidx / AppCompat）。
  * 选文件 → 看信息 → 抽音频 / 剪片段 → 结果直接进 Download 根目录。
+ *
+ * 1.1.0 起：参数拼装全部走 [FfmpegArgs]（可能的话别再在 Activity 里拼 ffmpeg 参数），
+ * 时间/尺寸格式化走 [Fmt]（一律 Locale.US），UI 小工具走 [BaseActivity]。
  */
-class MainActivity : Activity() {
+class MainActivity : BaseActivity() {
 
     companion object {
         private const val REQ_PICK = 1001
-        /** 两次点击之间的最小间隔：5 秒内重复点不生效 */
+
+        /** 成功保存后这段时间内不允许再跑：防止同一份结果被反复保存 */
         private const val COOLDOWN_MS = 5000L
     }
 
@@ -36,8 +35,7 @@ class MainActivity : Activity() {
     private var info: MediaInfo.Info? = null
     private var busy = false
     private var lastPct = -1
-    /** 上一次开始任务的时间点（用于 5 秒防重复点） */
-    private var lastRunAt = 0L
+    private var lastSuccessAt = 0L
 
     private lateinit var statusView: TextView
     private lateinit var infoView: TextView
@@ -45,7 +43,6 @@ class MainActivity : Activity() {
     private lateinit var progressText: TextView
     private lateinit var startInput: EditText
     private lateinit var endInput: EditText
-    private val actionButtons = ArrayList<Button>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -62,24 +59,23 @@ class MainActivity : Activity() {
 
     override fun onNewIntent(intent: Intent?) {
         super.onNewIntent(intent)
-        if (intent != null) handleSendIntent(intent)
+        setIntent(intent)
+        handleSendIntent(intent)
     }
 
     // 结果直接进公共 Download 目录（MediaStore 写入），不需要「所有文件访问」这种敏感权限
 
     @Suppress("DEPRECATION")
     private fun handleSendIntent(intent: Intent?) {
-        if (intent == null) return
-        if (intent.action == Intent.ACTION_SEND) {
-            val u = intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM) ?: return
-            uri = u
-            loadInfo(u)
-        }
+        if (intent == null || intent.action != Intent.ACTION_SEND) return
+        val u = intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)
+            ?: intent.clipData?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.uri
+            ?: return
+        uri = u
+        loadInfo(u)
     }
 
     // ---------------- UI ----------------
-
-    private fun dp(v: Int): Int = (v * resources.displayMetrics.density).toInt()
 
     private fun buildUi(): View {
         val column = LinearLayout(this).apply {
@@ -102,8 +98,7 @@ class MainActivity : Activity() {
         }
         column.addView(statusView, matchWrap())
 
-        val pick = actionButton("① 选择视频 / 音频") { pickFile() }
-        column.addView(pick, matchWrap(top = 4))
+        column.addView(actionButton("① 选择视频 / 音频") { pickFile() }, matchWrap(top = 4))
 
         infoView = TextView(this).apply {
             text = "还没选文件"
@@ -115,7 +110,10 @@ class MainActivity : Activity() {
         column.addView(infoView, matchWrap())
 
         column.addView(sectionTitle("音频剪辑器"), matchWrap(top = 14))
-        column.addView(actionButton("🎧 打开剪辑器（拖波形选段、删中间、拼接）") { openEditor() }, matchWrap(top = 6))
+        column.addView(
+            actionButton("🎧 打开剪辑器（拖波形选段、删中间、拼接）") { openEditor() },
+            matchWrap(top = 6)
+        )
         column.addView(hint("剪辑器里可以再选文件：视频会自动抽出音轨后再剪，纯音频直接导入。只处理声音，不动画面。"))
 
         column.addView(sectionTitle("提取音频（原音轨不动）"), matchWrap(top = 18))
@@ -152,35 +150,12 @@ class MainActivity : Activity() {
         }
         column.addView(progressText, matchWrap())
 
-        column.addView(hint("结果直接保存到 手机存储/Download。保存完会弹一个「查看」按钮，点了直接跳到文件管理器的 Download 目录。全程不联网、不上传。"), matchWrap(top = 14))
+        column.addView(
+            hint("结果直接保存到 手机存储/Download。保存完会弹一个「查看」按钮，点了直接跳到文件管理器的 Download 目录。全程不联网、不上传。"),
+            matchWrap(top = 14)
+        )
 
         return ScrollView(this).apply { addView(column) }
-    }
-
-    private fun sectionTitle(text: String) = TextView(this).apply {
-        this.text = text
-        textSize = 14f
-        setTypeface(typeface, Typeface.BOLD)
-        setTextColor(getColor(R.color.accent))
-        setPadding(0, dp(6), 0, 0)
-    }
-
-    private fun hint(text: String) = TextView(this).apply {
-        this.text = text
-        textSize = 12f
-        setTextColor(getColor(R.color.text_hint))
-        setPadding(dp(2), dp(8), dp(2), 0)
-        setLineSpacing(dp(2).toFloat(), 1f)
-    }
-
-    private fun actionButton(text: String, onClick: () -> Unit): Button {
-        val b = Button(this)
-        b.text = text
-        b.isAllCaps = false
-        b.textSize = 14f
-        b.setOnClickListener { onClick() }
-        actionButtons.add(b)
-        return b
     }
 
     private fun timeInput(hintText: String) = EditText(this).apply {
@@ -188,20 +163,6 @@ class MainActivity : Activity() {
         textSize = 14f
         inputType = InputType.TYPE_CLASS_TEXT
         setSingleLine(true)
-    }
-
-    private fun matchWrap(top: Int = 0) = LinearLayout.LayoutParams(
-        ViewGroup.LayoutParams.MATCH_PARENT,
-        ViewGroup.LayoutParams.WRAP_CONTENT
-    ).apply { topMargin = dp(top) }
-
-    private fun weight() = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
-        .apply { rightMargin = dp(4); leftMargin = dp(4) }
-
-    private fun toast(msg: String) = Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
-
-    private fun setActionsEnabled(enabled: Boolean) {
-        for (b in actionButtons) b.isEnabled = enabled
     }
 
     private fun showProgress(visible: Boolean) {
@@ -241,8 +202,11 @@ class MainActivity : Activity() {
             try {
                 contentResolver.takePersistableUriPermission(it, Intent.FLAG_GRANT_READ_URI_PERMISSION)
             } catch (_: Throwable) {
+                // 分享进来的 Uri 不是 persistable 的，正常，忽略
             }
             i.putExtra(AudioEditorActivity.EXTRA_URI, it.toString())
+            // 同包内传递也要显式带上 grant 标志：分享进来的临时授权只给到本包，别指望自动继承
+            i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
         try {
             startActivity(i)
@@ -264,6 +228,30 @@ class MainActivity : Activity() {
         }
     }
 
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode != Perm.REQ_WRITE) return
+        if (grantResults.firstOrNull() == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            toast("已授权，可以再点一次了")
+            return
+        }
+        val canAskAgain = try {
+            shouldShowRequestPermissionRationale(android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
+        } catch (_: Throwable) {
+            false
+        }
+        if (canAskAgain) {
+            toast("没给存储权限的话，结果存不到 Download")
+        } else {
+            toast("存储权限被永久拒绝，需要去设置里手动打开")
+            openAppSettings()
+        }
+    }
+
     private fun loadInfo(u: Uri) {
         statusView.text = "读取文件信息…"
         infoView.text = "…"
@@ -275,6 +263,7 @@ class MainActivity : Activity() {
             }
             val name = displayName(u)
             runOnUiThread {
+                if (!uiAlive()) return@runOnUiThread
                 info = i
                 if (i == null) {
                     infoView.text = "文件：$name\n读不出信息，但仍可以试着处理（ffmpeg 更宽容）"
@@ -308,24 +297,20 @@ class MainActivity : Activity() {
             toast("需要存储权限才能保存到 Download，请点允许后重试")
             return
         }
-        // 防连续狂点：5 秒内重复点击直接无效，避免同一份结果被反复保存
+        // 防连续狂点：上一次成功保存后 5 秒内的重复点击直接无效
         val now = SystemClock.elapsedRealtime()
-        val gap = now - lastRunAt
-        if (lastRunAt != 0L && gap < COOLDOWN_MS) {
-            val wait = ((COOLDOWN_MS - gap) / 1000L + 1L)
-            toast("刚点过了，${wait} 秒后再试")
+        if (lastSuccessAt != 0L && now - lastSuccessAt < COOLDOWN_MS) {
+            toast("刚保存过，${(COOLDOWN_MS - (now - lastSuccessAt)) / 1000L + 1L} 秒后再试")
             return
         }
-        lastRunAt = now
         busy = true
         setActionsEnabled(false)
         lastPct = -1
         showProgress(true)
         setProgress(0f, "准备中…")
         if (longTask) {
-            // 折中方案：不开前台服务，开跑前提示 + 期间保持屏幕常亮
-            LongTask.start(this)
-            statusView.text = "$title（请保持本页在前台）"
+            LongTask.start(this, title)
+            statusView.text = "$title（长任务，切后台也不会中断）"
         } else {
             statusView.text = title
         }
@@ -338,12 +323,16 @@ class MainActivity : Activity() {
             runOnUiThread {
                 busy = false
                 LongTask.stop(this@MainActivity)
+                if (!uiAlive()) return@runOnUiThread
                 setActionsEnabled(true)
                 showProgress(false)
                 statusView.text = msg
                 // 保存成功的出口统一弹「查看」目录引导（提取音频 / 剪片段都走这里）
-                val saved = Output.takeLastSaved()
-                if (saved != null && msg.startsWith("✅")) Output.promptSaved(this@MainActivity, saved)
+                if (msg.startsWith("✅")) {
+                    lastSuccessAt = SystemClock.elapsedRealtime()
+                    val saved = Output.takeLastSaved()
+                    if (saved != null) Output.promptSaved(this@MainActivity, saved)
+                }
             }
         }.start()
     }
@@ -355,28 +344,24 @@ class MainActivity : Activity() {
             toast("先选一个文件")
             return
         }
-        // 时长 ≥ 60 秒的素材按长任务处理，开跑前提示别切后台
+        // 时长 ≥ 60 秒的素材按长任务处理
         runTask("提取音频中…", LongTask.isLong(info?.durationMs ?: 0L)) {
+            val name = displayName(u)
             val src = copyToCache(u)
-            val base = baseName(u)
+            val base = Names.base(name)
             val out = File(cacheDir, "$base.$fmt")
             try {
                 if (out.exists()) out.delete()
-                val path = out.absolutePath
                 val totalUs = (info?.durationMs ?: 0L) * 1000L
 
-                var err: String? = if (fmt == "m4a") {
-                    Ffmpeg.run(this, listOf("-y", "-i", src.absolutePath, "-vn", "-c:a", "copy", path), totalUs) { setProgress(it) }
-                } else {
-                    val enc = when (fmt) {
-                        "mp3" -> listOf("-c:a", "libmp3lame", "-b:a", "192k")
-                        "flac" -> listOf("-c:a", "flac")
-                        else -> listOf("-c:a", "pcm_s16le")
+                var err = if (fmt == "m4a") {
+                    Ffmpeg.run(this, FfmpegArgs.extractCopy(src.absolutePath, out.absolutePath), totalUs) {
+                        setProgress(it)
                     }
-                    val a = mutableListOf("-y", "-i", src.absolutePath, "-vn")
-                    a.addAll(enc)
-                    a.add(path)
-                    Ffmpeg.run(this, a, totalUs) { setProgress(it) }
+                } else {
+                    Ffmpeg.run(this, FfmpegArgs.extractEncode(src.absolutePath, out.absolutePath, fmt), totalUs) {
+                        setProgress(it)
+                    }
                 }
 
                 if (err != null && fmt == "m4a") {
@@ -384,7 +369,7 @@ class MainActivity : Activity() {
                     setProgress(0f, "源音轨不是 AAC，转码中…")
                     err = Ffmpeg.run(
                         this,
-                        listOf("-y", "-i", src.absolutePath, "-vn", "-c:a", "aac", "-b:a", "192k", path),
+                        FfmpegArgs.extractEncode(src.absolutePath, out.absolutePath, "m4a"),
                         totalUs
                     ) { setProgress(it) }
                 }
@@ -392,14 +377,9 @@ class MainActivity : Activity() {
                 if (!out.exists() || out.length() == 0L) throw IllegalStateException("输出文件是空的")
 
                 setProgress(1f, "100%")
-                val mime = when (fmt) {
-                    "mp3" -> "audio/mpeg"
-                    "flac" -> "audio/flac"
-                    "wav" -> "audio/wav"
-                    else -> "audio/mp4"
-                }
-                val saved = Output.publish(this, out, "${base}.$fmt", mime)
-                "✅ 已保存\n$saved\n大小 ${humanSize(out.length())}"
+                val size = out.length()
+                val saved = Output.publish(this, out, "${base}.$fmt", FfmpegArgs.mimeFor(fmt))
+                "✅ 已保存\n$saved\n大小 ${Fmt.humanSize(size)}"
             } finally {
                 src.delete()
                 out.delete()
@@ -417,12 +397,12 @@ class MainActivity : Activity() {
         val startText = startInput.text.toString().trim()
         val endText = endInput.text.toString().trim()
 
-        val s = if (startText.isEmpty()) 0.0 else parseTime(startText)
+        val s = if (startText.isEmpty()) 0.0 else Fmt.parseTime(startText)
         if (s == null) {
             toast("起点格式不对，写成 0:30 或 90")
             return
         }
-        val e = if (endText.isEmpty()) null else parseTime(endText)
+        val e = if (endText.isEmpty()) null else Fmt.parseTime(endText)
         if (endText.isNotEmpty() && e == null) {
             toast("终点格式不对，写成 1:10 或 70")
             return
@@ -437,59 +417,38 @@ class MainActivity : Activity() {
             if (precise) "精确剪辑中（要重编码，慢）…" else "剪辑中…",
             precise || LongTask.isLong(info?.durationMs ?: 0L)
         ) {
+            val name = displayName(u)
             val src = copyToCache(u)
-            val base = baseName(u)
-            val out = File(cacheDir, "$base 片段.mp4")
+            // 关键：copy 模式沿用源容器。写死 .mp4 时，带字幕 mkv / opus 音轨 / wav 都会整条失败
+            val ext = FfmpegArgs.clipContainer(name, precise)
+            val out = File(cacheDir, "${Names.base(name)} 片段.$ext")
             try {
                 if (out.exists()) out.delete()
 
-                var lengthSec = 0.0
-                if (e != null) {
-                    lengthSec = e - s
-                } else {
-                    val total = (info?.durationMs ?: 0L) / 1000.0
-                    if (total > s) lengthSec = total - s
+                val totalSec = (info?.durationMs ?: 0L) / 1000.0
+                val durSec = when {
+                    e != null -> e - s
+                    totalSec > s -> totalSec - s
+                    else -> null
                 }
-                val totalUs = (lengthSec * 1_000_000).toLong().coerceAtLeast(0L)
+                val totalUs = ((durSec ?: 0.0) * 1_000_000).toLong()
 
-                val a = mutableListOf<String>()
-                a.add("-y")
-                if (s > 0) {
-                    // -ss 放 -i 前面是输入定位，快得多
-                    a.add("-ss")
-                    a.add("%.3f".format(s))
-                }
-                a.add("-i")
-                a.add(src.absolutePath)
-                if (e != null) {
-                    a.add("-t")
-                    a.add("%.3f".format(e - s))
-                }
-                if (precise) {
-                    a.addAll(
-                        listOf(
-                            "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
-                            "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "192k",
-                            "-movflags", "+faststart"
-                        )
-                    )
-                } else {
-                    // 注意：这里不加 -avoid_negative_ts make_zero，实测会把时长弄错
-                    a.addAll(listOf("-c", "copy", "-map", "0"))
-                }
-                a.add(out.absolutePath)
-
-                val err = Ffmpeg.run(this, a, totalUs) { setProgress(it) }
+                val err = Ffmpeg.run(
+                    this,
+                    FfmpegArgs.clip(src.absolutePath, out.absolutePath, s, durSec, precise),
+                    totalUs
+                ) { setProgress(it) }
                 if (err != null) {
                     throw IllegalStateException(
-                        if (!precise) "$err\n\n（这个容器不适合直接剪切，试试「精确剪」）" else err
+                        if (!precise) "$err\n\n（这个文件不太适合直接剪切，试试「精确剪」）" else err
                     )
                 }
                 if (!out.exists() || out.length() == 0L) throw IllegalStateException("输出文件是空的")
 
                 setProgress(1f, "100%")
-                val saved = Output.publish(this, out, out.name, "video/mp4")
-                "✅ 已保存\n$saved\n大小 ${humanSize(out.length())}"
+                val size = out.length()
+                val saved = Output.publish(this, out, out.name, FfmpegArgs.mimeFor(ext))
+                "✅ 已保存\n$saved\n大小 ${Fmt.humanSize(size)}"
             } finally {
                 src.delete()
                 out.delete()
@@ -500,91 +459,16 @@ class MainActivity : Activity() {
     // ---------------- 杂项 ----------------
 
     private fun copyToCache(u: Uri): File {
-        val name = sanitize(displayName(u))
-        val ext = name.substringAfterLast('.', "").ifEmpty { "mp4" }.lowercase()
+        val name = Names.sanitize(displayName(u))
+        val ext = Names.ext(name).ifEmpty { "mp4" }
         val dst = File(cacheDir, "input_pending.$ext")
         if (dst.exists()) dst.delete()
         // 先看源文件多大、内部存储还剩多少，避免把缓存盘塞爆后只报个看不懂的 IO 异常
-        val need = try {
-            contentResolver.query(u, null, null, null, null)?.use { c ->
-                if (c.moveToFirst()) {
-                    val i = c.getColumnIndex(OpenableColumns.SIZE)
-                    if (i >= 0 && !c.isNull(i)) c.getLong(i) else 0L
-                } else 0L
-            } ?: 0L
-        } catch (_: Throwable) {
-            0L
-        }
-        if (need > 0L) {
-            val free = android.os.StatFs(cacheDir.absolutePath).availableBytes
-            if (free < need + 50L * 1024 * 1024) {
-                throw IllegalStateException(
-                    "手机空间不够：这个文件约 ${humanSize(need)}，可用只有 ${humanSize(free)}。清点空间再试。"
-                )
-            }
-        }
+        Storage.requireFree(cacheDir, sizeOf(u))
         runOnUiThread { setProgress(0f, "准备文件…") }
         contentResolver.openInputStream(u)?.use { input ->
             dst.outputStream().use { output -> input.copyTo(output) }
         } ?: throw IllegalStateException("读不到这个文件，可能权限没给")
         return dst
-    }
-
-    private fun displayName(u: Uri): String {
-        var name = "未命名"
-        try {
-            contentResolver.query(u, null, null, null, null)?.use { c ->
-                if (c.moveToFirst()) {
-                    val idx = c.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-                    if (idx >= 0) {
-                        val v = c.getString(idx)
-                        if (!v.isNullOrBlank()) name = v
-                    }
-                }
-            }
-        } catch (_: Throwable) {
-        }
-        return name
-    }
-
-    private fun baseName(u: Uri): String {
-        val n = sanitize(displayName(u))
-        val dot = n.lastIndexOf('.')
-        val base = if (dot > 0) n.substring(0, dot) else n
-        return base.ifBlank { "音频" }
-    }
-
-    private fun sanitize(name: String): String {
-        val cleaned = name.replace(Regex("[\\\\/:*?\"<>|\\x00-\\x1f]"), "_").trim().ifEmpty { "未命名" }
-        // 文件名过长会直接报 File name too long，截断但保留扩展名
-        if (cleaned.length <= 80) return cleaned
-        val dot = cleaned.lastIndexOf('.')
-        val ext = if (dot > 0 && cleaned.length - dot <= 10) cleaned.substring(dot) else ""
-        val base = if (ext.isEmpty()) cleaned else cleaned.substring(0, dot)
-        return base.take(80 - ext.length) + ext
-    }
-
-    /** 支持 90 / 1:30 / 00:01:30.5 */
-    private fun parseTime(raw: String): Double? {
-        val t = raw.trim()
-        if (t.isEmpty()) return null
-        if (t.matches(Regex("^\\d+(\\.\\d+)?$"))) return t.toDoubleOrNull()
-        val parts = t.split(':')
-        if (parts.size < 2 || parts.size > 3) return null
-        var total = 0.0
-        for (p in parts) {
-            val v = p.toDoubleOrNull() ?: return null
-            if (v < 0) return null
-            total = total * 60 + v
-        }
-        return total
-    }
-
-    private fun humanSize(bytes: Long): String {
-        if (bytes < 1024) return "$bytes B"
-        val kb = bytes / 1024.0
-        if (kb < 1024) return "%.0f KB".format(kb)
-        val mb = kb / 1024.0
-        return if (mb < 1024) "%.1f MB".format(mb) else "%.2f GB".format(mb / 1024.0)
     }
 }

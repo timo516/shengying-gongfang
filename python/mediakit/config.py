@@ -9,8 +9,9 @@ from pathlib import Path
 # 项目根目录（本文件在 <root>/mediakit/config.py）
 ROOT = Path(__file__).resolve().parent.parent
 
-# 默认输出目录：软件目录下的 output
-DEFAULT_OUTPUT_DIR = Path(os.environ.get("MEDIAKIT_OUT", ROOT / "output"))
+# 默认输出目录：优先环境变量 MEDIAKIT_OUT，其次用户主目录下的 mediakit-output。
+# （以前是 <项目目录>/output —— pip 装进 site-packages 后那里是只读的，直接报错）
+DEFAULT_OUTPUT_DIR = Path(os.environ.get("MEDIAKIT_OUT") or (Path.home() / "mediakit-output"))
 
 # 支持的输入扩展名（小写，含点）
 VIDEO_EXTS = {
