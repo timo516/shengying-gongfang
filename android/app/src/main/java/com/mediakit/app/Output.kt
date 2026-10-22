@@ -1,5 +1,6 @@
 package com.mediakit.app
 
+import android.annotation.TargetApi
 import android.app.Activity
 import android.app.AlertDialog
 import android.content.ClipData
@@ -45,7 +46,8 @@ object Output {
         return saved
     }
 
-    /** Android 10+：MediaStore 写公共 Download，免权限 */
+    /** Android 10+：MediaStore 写公共 Download，免权限（调用点已按 SDK_INT 分支，这里标 TargetApi 让 lint 认账） */
+    @TargetApi(Build.VERSION_CODES.Q)
     private fun publishScoped(ctx: Context, src: File, displayName: String, mime: String): String {
         val resolver = ctx.contentResolver
         val values = ContentValues().apply {

@@ -149,8 +149,8 @@ The output must contain the fingerprint above. If it doesn't, the file is not my
 
 | File | SHA-256 |
 |---|---|
-| `shengying-gongfang-1.1.0-arm64.apk` | `ac2e38b1b49e4bd84db02b6bf99852851c61e8890040df90421d08929c84cd63` |
-| `shengying-gongfang-1.1.0-full.apk` | `b3ef52d3ec66b90d9d4c3c5b5db532c85d7eabd6661096898142bfd6093e251b` |
+| `shengying-gongfang-1.1.0-arm64.apk` | `e2b8a895ea628aa85c7a23bbcec9b7817099a8cc05489bf476b7b7061bfcfb52` |
+| `shengying-gongfang-1.1.0-full.apk` | `3bdaae2380f394632abc783f65031c34569e848ce4e5e3a5f6d076b6684aa808` |
 
 Two checks you can do on the phone itself:
 

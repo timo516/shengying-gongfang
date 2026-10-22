@@ -13,12 +13,14 @@ versionCode 6, minSdk 24 / targetSdk 34。
 - **逗号小数点地区剪片段必失败**：`"%.3f".format()` 用默认 Locale，德语/法语等地区把 `-ss 30.000` 写成 `30,000`。所有 ffmpeg 时间参数改用 `Locale.US`。
 - **波形分析进度假死、长素材必超时**：解码时总时长传了 0，进度永不回调，看门狗固定 5 分钟。现在把已知时长传进去，进度和超时都按素材长度走。
 - **保存后的提示路径可能不存在**：MediaStore 遇重名会自动改名（`xxx (1).m4a`），现在回读 `DISPLAY_NAME`。
+- **时间输入越界被静默接受**：`1:70` 会被算成 130 秒，用户以为输错了地方却没提示。分段现在严格校验（除第一段外都必须 < 60），越界直接判非法。
+- **任务失败后按钮仍要空等冷却**：冷却计时不看结果，失败一次也得等。现在只有成功才进冷却。
 - **Python**：`run()` 的异常只带 stderr 末 12 行，`ffprobe` 兜底解析因此拿不到 `Duration`（多音轨文件必现）；`run_with_progress()` 只读 stdout，另一条 PIPE 写满会死锁，且没有超时。
 
 ### Added
 
 - **前台服务**（`WorkService`，`dataSync` 类型）：长任务期间切后台/锁屏不再被当缓存进程回收 —— 以前四分钟的精确剪可能只剩半截文件。
-- **可单测的核心逻辑**：`FfmpegArgs`（参数拼装）、`Fmt`（时间/尺寸）、`Names`（文件名）、`Timeline`（区间运算）全部与 Android API 解耦，配 30 条 JVM 单测。测试期依赖只有 JUnit，**不进 APK**。
+- **可单测的核心逻辑**：`FfmpegArgs`（参数拼装）、`Fmt`（时间/尺寸）、`Names`（文件名）、`Timeline`（区间运算）全部与 Android API 解耦，配 31 条 JVM 单测。测试期依赖只有 JUnit，**不进 APK**。
 - `tools/make-fixtures.sh` + `tools/smoke.sh`：用 lavfi 合成"最容易翻车"的素材（带字幕 mkv / opus mkv / wav / 多音轨），把 App 里的参数原样跑一遍，**不需要真机**就能回归容器与编码组合。
 - `.github/workflows/ci.yml`：Android 编译 + 单测、Python 单测 + ffmpeg 参数回归。
 - 剪辑器导入前预检可用空间（和主页共用 `Storage.requireFree`）。

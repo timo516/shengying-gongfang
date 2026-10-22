@@ -73,7 +73,10 @@ object Ffmpeg {
                 if (System.currentTimeMillis() - start > timeLimitMs) {
                     timedOut.set(true)
                     try {
-                        proc.destroyForcibly()
+                        // destroyForcibly() 是 API 26 才加的；minSdk 是 24，Android 7.x 上直接调
+                        // 会抛 NoSuchMethodError，正好把看门狗自己搞崩
+                        if (android.os.Build.VERSION.SDK_INT >= 26) proc.destroyForcibly()
+                        else proc.destroy()
                     } catch (_: Throwable) {
                     }
                     return@Thread

@@ -150,8 +150,8 @@ keytool -printcert -jarfile shengying-gongfang-1.1.0-arm64.apk
 
 | 文件 | SHA-256 |
 |---|---|
-| `shengying-gongfang-1.1.0-arm64.apk` | `ac2e38b1b49e4bd84db02b6bf99852851c61e8890040df90421d08929c84cd63` |
-| `shengying-gongfang-1.1.0-full.apk` | `b3ef52d3ec66b90d9d4c3c5b5db532c85d7eabd6661096898142bfd6093e251b` |
+| `shengying-gongfang-1.1.0-arm64.apk` | `e2b8a895ea628aa85c7a23bbcec9b7817099a8cc05489bf476b7b7061bfcfb52` |
+| `shengying-gongfang-1.1.0-full.apk` | `3bdaae2380f394632abc783f65031c34569e848ce4e5e3a5f6d076b6684aa808` |
 
 手机上也能自查两步：
 
@@ -218,7 +218,7 @@ gradle assembleRelease            # 需要 JDK 17 + Gradle 8.7 + SDK 34
 gradle testDebugUnitTest          # JVM 单测：时间解析 / 参数拼装 / 保留段合并
 ```
 
-> 仓库里只带了 **arm64-v8a** 的 `libffmpeg.so`（17 MB，为了不让 clone 变得很痛苦）。想打全量四 ABI 包，按 [android/JNILIBS.zh-CN.txt](android/JNILIBS.zh-CN.txt) 补齐其余三份，再 `gradle assembleRelease -Pabi=arm64-v8a,armeabi-v7a,x86,x86_64`。
+> 仓库里只带了 **arm64-v8a** 的 `libffmpeg.so`（17 MB，为了不让 clone 变得很痛苦）。想打全量四 ABI 包，按 [android/JNILIBS.zh-CN.md](android/JNILIBS.zh-CN.md) 补齐其余三份，再 `gradle assembleRelease -Pabi=arm64-v8a,armeabi-v7a,x86,x86_64`。
 
 签名的密码**不在仓库里**。要用自己的签名，复制 `android/keystore.properties.example` 为 `android/keystore.properties` 填好；没有这个文件时会出 unsigned 包，照样能编过。
 
