@@ -1,4 +1,4 @@
-# ShengYing GongFang (声影工坊)
+# ShengYing GongFang — Offline Video-to-Audio Extractor & Audio Clip Editor for Android
 
 **An offline audio & video toolkit for Android. ffmpeg is bundled inside the APK, so it works the moment you install it: fully local, zero third-party dependencies, no ads, no sign-in.**
 
