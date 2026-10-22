@@ -31,7 +31,7 @@ Out of scope:
 
 Preferred: use GitHub's private advisory form —
 
-<https://github.com/timo516/shengying-gongfang/security/advisories/new>
+<https://github.com/timo516/android-video-audio-extractor/security/advisories/new>
 
 If that doesn't work, open a normal issue that says only "security issue, please contact me" and wait for a reply — don't include details.
 
@@ -49,7 +49,7 @@ Please include:
 
 ## Verifying that a build is official
 
-Only APKs published on the [Releases page](https://github.com/timo516/shengying-gongfang/releases) are the original build. The signing certificate fingerprint is published in the [README](README.md#verify-the-download); anything that doesn't match is not mine.
+Only APKs published on the [Releases page](https://github.com/timo516/android-video-audio-extractor/releases) are the original build. The signing certificate fingerprint is published in the [README](README.md#verify-the-download); anything that doesn't match is not mine.
 
 This matters more than usual here: the "no `INTERNET` permission" guarantee is a property of *this* build. A repackaged APK can add permissions, and the app would look identical.
 

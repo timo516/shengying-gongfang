@@ -108,7 +108,7 @@ python3 -m mediakit.cli batch /sdcard/Movies -f m4a
 
 ## 下载安装
 
-到 [Releases](https://github.com/timo516/shengying-gongfang/releases) 页面下载：
+到 [Releases](https://github.com/timo516/android-video-audio-extractor/releases) 页面下载：
 
 | 文件 | ABI | 大小 | 适合谁 |
 |---|---|---|---|
@@ -122,7 +122,7 @@ python3 -m mediakit.cli batch /sdcard/Movies -f m4a
 ### 验证安装包
 
 **唯一官方发布渠道是本仓库的 Releases 页面：**
-<https://github.com/timo516/shengying-gongfang/releases>
+<https://github.com/timo516/android-video-audio-extractor/releases>
 
 只有在上面发布的安装包才是未被篡改的原始版本。网盘、论坛、第三方应用站、群里转发的安装包都无法确认来源——重新打包过的 APK 可以额外加入权限，所以「无网络权限」这个保证只对原版成立。
 

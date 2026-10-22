@@ -107,7 +107,7 @@ See [python/README.md](python/README.md).
 
 ## Download & install
 
-Grab the APK from [Releases](https://github.com/timo516/shengying-gongfang/releases):
+Grab the APK from [Releases](https://github.com/timo516/android-video-audio-extractor/releases):
 
 | File | ABI | Size | Who it's for |
 |---|---|---|---|
@@ -121,7 +121,7 @@ Android will ask you to allow "install from unknown sources"; this app is not on
 ### Verify the download
 
 **The only official release channel is this repository's Releases page:**
-<https://github.com/timo516/shengying-gongfang/releases>
+<https://github.com/timo516/android-video-audio-extractor/releases>
 
 Only the APKs published there are the original, unmodified build. Packages from cloud drives, forums, third-party app sites, chat groups or "a friend sent me this" cannot be trusted: a repackaged APK can add permissions, so the "no network permission" guarantee only holds for the original.
 
